@@ -11,25 +11,27 @@ RESOLUTION = np.float_(10.0)
 # Size of the active window that
 # travels with the robot
 WINDOW_SIZE = 9
+assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
 WINDOW_CENTER = WINDOW_SIZE/2
 
 # Size of each polar sector
 # in the polar histogram (in degrees)
-ALPHA = 5
-if np.mod(360.0/alpha) != 0:
+ALPHA = 10
+if np.mod(360.0, ALPHA) != 0:
     raise ValueError("Alpha must define an int amount of sectors")
 HIST_SIZE = 360/ALPHA
 
 # Constants for virtual vector magnitude calculations
-# A - B*D_max = 0
-D_max = (WINDOW_SIZE-1)*np.sqrt(2)*RESOLUTION/2.0
+# D_max^2 = 2*(ws-1/2)^2
+# A - B*D_max^2 = 1
+D_max2 = np.square(WINDOW_SIZE-1)/2.0
 B = np.float_(1.0)
-A = np.float_(B*D_max)
+A = np.float_(1+B*D_max2)
 
 # Active window array indexes
 MAG = 0
 BETA = 1
-DIST = 2
+DIST2 = 2
 
 class VFHModel:
 
@@ -57,8 +59,10 @@ class VFHModel:
             for j in xrange(WINDOW_SIZE):
                 if j == WINDOW_CENTER and i == WINDOW_CENTER:
                     continue
-                self.active_window[i,j,BETA] = np.degrees(np.arctan2(j-WINDOW_CENTER, i-WINDOW_CENTER))
-                self.active_window[i,j,DIST] = RESOLUTION*np.sqrt(np.square(i-WINDOW_CENTER) + np.square(j-WINDOW_CENTER))
+                beta_p = np.degrees(np.arctan2(j-WINDOW_CENTER, i-WINDOW_CENTER))
+                self.active_window[i,j,BETA] = beta_p + 360 if beta_p < 0 else beta_p
+                # The distance is measured in terms of cells (independent of scale/resolution of the grid)
+                self.active_window[i,j,DIST2] = np.float_(np.square(i-WINDOW_CENTER) + np.square(j-WINDOW_CENTER))
 
 
         # The Polar Histogram maps each cell in the active window
@@ -116,7 +120,7 @@ class VFHModel:
                     self.active_window[i,j,MAG] = 0.0
                 else :
                     cij = self.obstacle_grid[grid_i, grid_j]
-                    mij = np.square(cij)*(A - (B*self.active_window[i, j, DIST]))
+                    mij = np.square(cij)*(A - B*self.active_window[i, j, DIST2])
                     self.active_window[i,j,MAG] = mij
 
         #return self.active_window
@@ -130,14 +134,23 @@ class VFHModel:
             for j in xrange(WINDOW_SIZE):
                 if j == WINDOW_CENTER and i == WINDOW_CENTER:
                     continue
-                k = int((self.active_window[i, j, BETA] + 180)/ALPHA)
+                k = int(self.active_window[i, j, BETA]/ALPHA) % HIST_SIZE
+                assert k < HIST_SIZE and k >= 0, "Error for polar histogram index: %d on i = %d, j = %d" % (k, i, j)
                 self.polar_hist[k] += self.active_window[i, j, MAG]
 
         #return self.polar_hist
 
     def update_filtered_polar_histogram(self):
-        pass
+
+        ## Amount of adyacent sectors to filter
+        L = 3
+        assert (2*L + 1) < HIST_SIZE
+        for i in xrange(HIST_SIZE):
+            coef = [[L - abs(L-j) + 1, (i + (j-L))%HIST_SIZE] for j in xrange(2*L+1)]
+            self.filt_polar_hist[i] = np.sum([c*self.polar_hist[k] for c, k in coef])/(2*L+1)
         
+    def analyze_valleys():
+        pass
     def calculate_steering_dir(self):
         pass
 
@@ -148,12 +161,49 @@ class VFHModel:
 
 def main():
     np.set_printoptions(precision=2)
-    H = VFHModel()
-    print(H.obstacle_grid)
-    print(H.active_window[:,:,BETA])
-    print(H.active_window[:,:,DIST])
-    print D_max
+    robot = VFHModel()
+    print "Obstacle grid"
+    print robot.obstacle_grid, "\n"
+    print "Active Window angles"
+    print robot.active_window[:,:,BETA], "\n"
+    print "Active Window squared distances"
+    print robot.active_window[:,:,DIST2], "\n"
+    print "Max distance squared: %f" % D_max2
+
     
+    print("Updating the obstacle grid and robot position")
+
+    robot.update_position(52.1,50.7,0.0)
+
+    robot.obstacle_grid[1,6] = 1
+    robot.obstacle_grid[1,5] = 2
+    robot.obstacle_grid[1,4] = 2
+    robot.obstacle_grid[1,3] = 5
+    robot.obstacle_grid[1,2] = 13
+    robot.obstacle_grid[2,2] = 3
+    robot.obstacle_grid[3,2] = 3
+    robot.obstacle_grid[4,2] = 3
+
+    robot.obstacle_grid[9,2] = 4
+    robot.obstacle_grid[9,3] = 5
+    robot.obstacle_grid[9,4] = 6
+    robot.obstacle_grid[9,5] = 5
+    robot.obstacle_grid[9,6] = 4
+
+    print robot.i_0, robot.j_0
+    print robot._active_grid(), "\n"
+
+    print "Updating the active window"
+    robot.update_active_window()
+    print robot.active_window[:, :, MAG], "\n"
+
+    print "Updating polar histogram"
+    robot.update_polar_histogram()
+    print robot.polar_hist, "\n"
+
+    print "Updating filtered histogram"
+    robot.update_filtered_polar_histogram()
+    print robot.filt_polar_hist, "\n"
 
 if __name__ == "__main__":
     main()
