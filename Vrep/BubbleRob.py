@@ -13,6 +13,18 @@ except:
 
 import sys
 import time
+import msvcrt as m
+
+def wait():
+    m.getch()
+
+print "Hello"
+
+#time.sleep(50)
+
+#while True:
+#    pass
+
 
 
 def main(argc, argv):
@@ -25,7 +37,7 @@ def main(argc, argv):
         portNb = int(argv[1])
         leftMotorHandle = int(argv[2])
         rightMotorHandle = int(argv[3])
-        sensorHandle = int(arvg[4])
+        sensorHandle = int(argv[4])
     else:
         print "Arguments error"
         time.sleep(5)
@@ -34,7 +46,7 @@ def main(argc, argv):
     clientID = vrep.simxStart("127.0.0.1",portNb,True,True,2000,5)
 
     if clientID != -1:
-    {
+    #{
         # Succes!
         driveBackStartTime = -99000
         motorSpeeds = [0., 0.]
@@ -66,5 +78,15 @@ def main(argc, argv):
     ##}
     return 0
 
-main(sys.argc, sys.argv)
+try:
+    main(len(sys.argv), sys.argv)
+except Exception as inst:
+    print type(inst)
+    print inst.args
+    print inst
+    print "press a key"
+    wait()
+
+print "End of exectution"
+wait()
 
