@@ -1,5 +1,14 @@
 #! /usr/bin/python
 
+import sys
+import time
+
+print "Redirecting stdout and stderr to logfile BubbleRob.log"
+logfile = open('BubbleRob.log', 'w')
+sys.stdout = logfile
+print "LOG START"
+
+
 try:
     import vrep
 except:
@@ -11,19 +20,19 @@ except:
     print ('--------------------------------------------------------------')
     print ('')
 
-import sys
-import time
-import msvcrt as m
 
-def wait():
-    m.getch()
+try:
+    import msvcrt as m
+    def wait():
+        sys.stdout.flush()
+        m.getch()
 
-print "Hello"
-
-#time.sleep(50)
-
-#while True:
-#    pass
+except Exception as e:
+    print e
+    print "Defaulting wait function"
+    def wait():
+        sys.stdout.flush()
+        raw_input("")
 
 
 
@@ -90,3 +99,4 @@ except Exception as inst:
 print "End of exectution"
 wait()
 
+logfile.close()
