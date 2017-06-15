@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Size of the full Grid
 GRID_SIZE = 100
@@ -204,6 +205,24 @@ def main():
     print "Updating filtered histogram"
     robot.update_filtered_polar_histogram()
     print robot.filt_polar_hist, "\n"
+
+
+    ### Figuras y graficos ###
+    plt.figure(1)
+    x = [ALPHA*x for x in range(len(robot.filt_polar_hist))]
+    plt.bar(x, robot.polar_hist, 8.0, 0, color='r')
+    plt.title("Histograma polar")
+
+    plt.figure(2)
+    plt.bar(x, robot.filt_polar_hist, 8.0, 0, color='b')
+    plt.title("Histograma polar filtrado")
+
+    plt.figure(3)
+    plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=50)
+    plt.xlabel("X")
+    plt.ylabel("Y", rotation='horizontal')
+    
+    plt.show()
 
 if __name__ == "__main__":
     main()
