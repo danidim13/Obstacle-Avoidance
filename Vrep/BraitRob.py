@@ -1,15 +1,21 @@
-#! /usr/bin/python
+#! python
+# /usr/bin/python
 
 import sys
 import time
 import math
 
-sys.path.insert(0, '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py')
+windows_path = 'C:\\Program Files (x86)\\V-REP3\\V-REP_PRO_EDU\\Obstacle-Avoidance\\Py'
+#sys.path.insert(0, '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py')
+print sys.path
+sys.path.insert(0, windows_path)
+print sys.path
 import Braitenberg as brait
 
-print "Redirecting stdout and stderr to logfile BubbleRob.log"
-logfile = open('BubbleRob.log', 'w')
-sys.stdout = logfile
+#print "Redirecting stdout and stderr to logfile BubbleRob.log"
+#sys.stdout.flush()
+#logfile = open('BubbleRob.log', 'w')
+#sys.stdout = logfile
 print "LOG START"
 
 
@@ -21,6 +27,7 @@ except:
     print ('either "vrep.py" or the remoteApi library could not be found.')
     print ('Make sure both are in the same folder as this file,')
     print ('or appropriately adjust the file "vrep.py"')
+
     print ('--------------------------------------------------------------')
     print ('')
 
@@ -132,4 +139,4 @@ if __name__ == "__main__":
     print "End of exectution"
     wait()
 
-logfile.close()
+#logfile.close()

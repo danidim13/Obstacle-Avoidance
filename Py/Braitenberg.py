@@ -1,4 +1,5 @@
-#! /usr/bin/python
+#! python
+## /usr/bin/python
 import math
 
 D_MIN = 0.01
