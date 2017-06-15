@@ -7,7 +7,7 @@ V_MIN = -math.pi
 V_MAX = math.pi
 
 class BraitRobot(): 
-    def __init__(self)
+    def __init__(self):
         self.x = 0.
         self.y = 0.
         self.cita = 0.
@@ -24,14 +24,14 @@ def Braitenberg3a(d_left, d_right):
 
 def MapStimulus(s, s_min, s_max, r_min, r_max):
     if s >= s_max:
-        return r_max:
+        return r_max
     elif s > s_min:
         #y = mx + b
         m = (r_max - r_min)/(s_max - s_min)
         b = r_min - (m*s_min)
         return (m*s) + b
     else:
-        return r_min;
+        return r_min
 		
 def main():
     pass
