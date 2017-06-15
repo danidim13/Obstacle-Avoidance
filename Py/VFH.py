@@ -3,6 +3,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+########################################
+###            Constantes           ####
+########################################
+###                                 ####
+###                                 ####
+
 # Size of the full Grid
 GRID_SIZE = 100
 
@@ -18,9 +25,12 @@ WINDOW_CENTER = WINDOW_SIZE/2
 # Size of each polar sector
 # in the polar histogram (in degrees)
 ALPHA = 10
-if np.mod(360.0, ALPHA) != 0:
+if np.mod(360, ALPHA) != 0:
     raise ValueError("Alpha must define an int amount of sectors")
 HIST_SIZE = 360/ALPHA
+
+# Valley/Peak threshold
+THRESH = 600.0
 
 # Constants for virtual vector magnitude calculations
 # D_max^2 = 2*(ws-1/2)^2
@@ -34,27 +44,26 @@ MAG = 0
 BETA = 1
 DIST2 = 2
 
+###                                 ####
+###                                 ####
+########################################
+
 class VFHModel:
 
     def __init__(self):
 
-        #if not callable(certainty_func):
-        #    raise TypeError("Variable certainty_func must define a function")
-
-        grid_dim = (GRID_SIZE, GRID_SIZE)
-        # [mij, citaij, dij]
-        window_dim = (WINDOW_SIZE, WINDOW_SIZE, 3)
-        hist_dim = HIST_SIZE
-
         # The Obstacle Grid keeps count of the certainty values
         # for each cell in the grid
+        grid_dim = (GRID_SIZE, GRID_SIZE)
         self.obstacle_grid = np.zeros( grid_dim, dtype = np.int16 )
 
-        # The Active Window has information (magnitude and direction)
+        # The Active Window has information (magnitude, direction, distance to robot)
         # of an obstacle vector for each active cell in the grid
+        # [mij, citaij, dij]
+        window_dim = (WINDOW_SIZE, WINDOW_SIZE, 3)
         self.active_window = np.zeros( window_dim, dtype = np.float_ )
 
-        # Initialize angles (these don't change)
+        # Initialize angles and distance (these don't change)
 
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
@@ -68,10 +77,15 @@ class VFHModel:
 
         # The Polar Histogram maps each cell in the active window
         # to an angular sector
+        hist_dim = HIST_SIZE
         self.polar_hist = np.zeros( hist_dim, dtype = np.float_ )
 
         # The Filtered Polar Histogram holds the actual data to be analized
         self.filt_polar_hist = np.zeros( hist_dim, dtype = np.float_ )
+
+        # The valleys are stored as start-end pairs of sectors
+        # in the filtered polar histogram
+        self.valleys = []
 
         # Real position of the robot
         self.x_0 = 0.0
@@ -81,9 +95,8 @@ class VFHModel:
         # Cell of the robot
         self.i_0 = 0
         self.j_0 = 0
-
-    def _init_params(self):
-        pass
+        # Sector of the robot
+        self.k_0 = 0
 
     def update_position(self, x, y, cita):
         self.x_0 = x
@@ -92,8 +105,9 @@ class VFHModel:
 
         self.i_0 = int(x / RESOLUTION)
         self.j_0 = int(y / RESOLUTION)
+        self.k_0 = int(cita / ALPHA)%HIST_SIZE
 
-    def update_obstacle_densitiy(self, sensor_readings):
+    def update_obstacle_density(self, sensor_readings):
         pass
 
     def _active_grid(self):
@@ -149,15 +163,71 @@ class VFHModel:
         for i in xrange(HIST_SIZE):
             coef = [[L - abs(L-j) + 1, (i + (j-L))%HIST_SIZE] for j in xrange(2*L+1)]
             self.filt_polar_hist[i] = np.sum([c*self.polar_hist[k] for c, k in coef])/(2*L+1)
-        
-    def analyze_valleys():
-        pass
+
+    def find_valleys(self):
+        start = None
+        for x in xrange(HIST_SIZE):
+            if self.filt_polar_hist[x] > THRESH:
+                start = x
+                break
+
+        # If no value was found over the threshold
+        # no action needs to be taken since there are
+        # no nearby obstacles
+        if start == None:
+            return -1
+
+        # Else, look for valleys after 'start'
+        self.valleys = []
+        valley_found = False
+        for i in xrange(HIST_SIZE+1):
+            index = (start + i)%HIST_SIZE
+            if not valley_found:
+                if self.filt_polar_hist[index] < THRESH:
+                    v_start = index
+                    valley_found = True
+
+            else:
+                if self.filt_polar_hist[index] > THRESH:
+                    self.valleys.append(tuple([v_start, index]))
+                    valley_found = False
+        return 0
+
     def calculate_steering_dir(self):
+
+        # First we determine which valley is closest to the current
+        # robot orientation
+        closest_dist = None
+        closest_valley = None
+
+        if len(self.valleys) == 0:
+            raise Exception("No candidate valleys found to calculate a new direction")
+
+        for v in self.valleys:
+
+            d1, d2 = [_dist(self.filt_polar_hist, self.k_0, sector) for sector in v]
+
+            if closest_dist != None:
+                min_dist = min(d1, d2)
+                if min_dist < closest_dist:
+                    closest_dist = min_dist
+                    closest_valley = v
+            else:
+                closest_dist = min(d1, d2)
+                closest_valley = v
+
+        # Then we need to determine the middle of the valley and that sector
+        # will be the direction
+        s1, s2 = closest_valley
+        v_size = (s2 - s1) if s2 > s1 else HIST_SIZE - (s1-s2)
+        new_dir = ALPHA * ((s1 + v_size/2)% HIST_SIZE)
+
+    def calculate_speed(self):
         pass
 
-
-
-
+    def _dist(array,i,j):
+        n_dist = abs(i-j)
+        return min(n_dist, len(array) - n_dist)
 
 
 def main():
@@ -206,19 +276,24 @@ def main():
     robot.update_filtered_polar_histogram()
     print robot.filt_polar_hist, "\n"
 
+    print "Looking for valleys"
+    robot.find_valleys()
+    print robot.valleys, "\n"
+
 
     ### Figuras y graficos ###
     plt.figure(1)
     x = [ALPHA*x for x in range(len(robot.filt_polar_hist))]
+    i = [a for a in range(len(robot.filt_polar_hist))]
     plt.bar(x, robot.polar_hist, 8.0, 0, color='r')
     plt.title("Histograma polar")
 
     plt.figure(2)
-    plt.bar(x, robot.filt_polar_hist, 8.0, 0, color='b')
+    plt.bar(i, robot.filt_polar_hist, 0.1, 0, color='b')
     plt.title("Histograma polar filtrado")
 
     plt.figure(3)
-    plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=50)
+    plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=15)
     plt.xlabel("X")
     plt.ylabel("Y", rotation='horizontal')
     
