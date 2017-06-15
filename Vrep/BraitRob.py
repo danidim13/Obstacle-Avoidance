@@ -2,11 +2,15 @@
 
 import sys
 import time
+import math
 
-#print "Redirecting stdout and stderr to logfile BubbleRob.log"
-#logfile = open('BubbleRob.log', 'w')
-#sys.stdout = logfile
-#print "LOG START"
+sys.path.insert(0, '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py')
+import Braitenberg as brait
+
+print "Redirecting stdout and stderr to logfile BubbleRob.log"
+logfile = open('BubbleRob.log', 'w')
+sys.stdout = logfile
+print "LOG START"
 
 
 try:
@@ -47,7 +51,8 @@ def runSim(argc, argv):
     leftSensorHandle = None
     rightSensorHandle = None
 
-    if argc != 6:
+    print "Initializing values"
+    if argc == 6:
         portNb = int(argv[1])
         leftMotorHandle = int(argv[2])
         rightMotorHandle = int(argv[3])
@@ -77,19 +82,34 @@ def runSim(argc, argv):
         ### Main Simulation Loop ###
         while (vrep.simxGetConnectionId(clientID) != -1):
 
+            print "Reading sensors..."
             ## Read Sensors
-            leftReturnCode, leftSensorTrigger, leftData = vrep.simxReadProximitySensor(clientID,leftSensorHandle,vrep.simx_opmode_streaming)[0:3]
-            rightReturnCode, rightSensorTrigger, rightData = vrep.simxReadProximitySensor(clientID,rightSensorHandle,vrep.simx_opmode_streaming)[0:3]
+            leftReturnCode, leftSensorTrigger, leftData, leftDist = vrep.simxReadProximitySensor(clientID,leftSensorHandle,vrep.simx_opmode_streaming)[0:4]
+            rightReturnCode, rightSensorTrigger, rightData, rightDist = vrep.simxReadProximitySensor(clientID,rightSensorHandle,vrep.simx_opmode_streaming)[0:4]
 
-            if (leftReturnCode == vrep.simx_return_ok && rightReturnCode == vrep.simx_return_ok):
+            if (leftReturnCode == vrep.simx_return_ok and rightReturnCode == vrep.simx_return_ok):
             ## We succeeded at reading the proximity sensor
-                motorSpeeds[0] = -3.1415*0.8
-                motorSpeeds[1] = -3.1415*0.8
-                ##
-                #if (sensorTrigger):
+                dleft = brait.D_MAX
+                dright = brait.D_MAX
+
+                if (leftSensorTrigger):
+                    print "Detected something on the left!"
+                    print leftData
+                    print leftDist
+                    dleft = math.sqrt(sum([x**2 for x in leftData]))
+                if (rightSensorTrigger):
+                    print "Detected something on the right!"
+                    print rightData
+                    print rightDist
+                    dright = math.sqrt(sum([x**2 for x in rightData]))
+                vleft, vright = brait.Braitenberg2b(dleft, dright)
+
+                motorSpeeds[0] = vleft
+                motorSpeeds[1] = vright
+
 
             vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, motorSpeeds[0], vrep.simx_opmode_oneshot)
-                vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, motorSpeeds[1], vrep.simx_opmode_oneshot)
+            vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, motorSpeeds[1], vrep.simx_opmode_oneshot)
             time.sleep(0.005)
 
         ### End of Simulation loop ###
@@ -112,4 +132,4 @@ if __name__ == "__main__":
     print "End of exectution"
     wait()
 
-#logfile.close()
+logfile.close()
