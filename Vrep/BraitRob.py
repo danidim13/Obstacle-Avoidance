@@ -1,15 +1,17 @@
-#! python
-# /usr/bin/python
+#! /usr/bin/python
+# python
 
 import sys
 import time
 import math
 
 windows_path = 'C:\\Program Files (x86)\\V-REP3\\V-REP_PRO_EDU\\Obstacle-Avoidance\\Py'
+linux_path = '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py'
 #sys.path.insert(0, '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py')
-print sys.path
-sys.path.insert(0, windows_path)
-print sys.path
+#print sys.path
+#sys.path.insert(0, windows_path)
+sys.path.insert(0, linux_path)
+#print sys.path
 import Braitenberg as brait
 
 #print "Redirecting stdout and stderr to logfile BubbleRob.log"
