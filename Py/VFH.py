@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 # Size of the full Grid
 GRID_SIZE = 100
 
-# Resolution of each cell (in cm)
-RESOLUTION = np.float_(10.0)
+# Resolution of each cell (in m)
+RESOLUTION = np.float_(0.10)
 
 # Size of the active window that
 # travels with the robot
@@ -31,6 +31,9 @@ HIST_SIZE = 360/ALPHA
 
 # Valley/Peak threshold
 THRESH = 600.0
+V_MAX = 0.23
+V_MIN = 0.01
+OMEGA_MAX = 5.0
 
 # Constants for virtual vector magnitude calculations
 # D_max^2 = 2*(ws-1/2)^2
@@ -57,9 +60,9 @@ class VFHModel:
         grid_dim = (GRID_SIZE, GRID_SIZE)
         self.obstacle_grid = np.zeros( grid_dim, dtype = np.int16 )
 
-        # The Active Window has information (magnitude, direction, distance to robot)
-        # of an obstacle vector for each active cell in the grid
-        # [mij, citaij, dij]
+        # The Active Window has information (magnitude,
+        # direction, distance to robot) of an obstacle vector
+        # for each active cell in the grid [mij, citaij, dij]
         window_dim = (WINDOW_SIZE, WINDOW_SIZE, 3)
         self.active_window = np.zeros( window_dim, dtype = np.float_ )
 
@@ -71,7 +74,8 @@ class VFHModel:
                     continue
                 beta_p = np.degrees(np.arctan2(j-WINDOW_CENTER, i-WINDOW_CENTER))
                 self.active_window[i,j,BETA] = beta_p + 360 if beta_p < 0 else beta_p
-                # The distance is measured in terms of cells (independent of scale/resolution of the grid)
+                # The distance is measured in terms of cells
+                # (independent of scale/resolution of the grid)
                 self.active_window[i,j,DIST2] = np.float_(np.square(i-WINDOW_CENTER) + np.square(j-WINDOW_CENTER))
 
 
@@ -80,7 +84,8 @@ class VFHModel:
         hist_dim = HIST_SIZE
         self.polar_hist = np.zeros( hist_dim, dtype = np.float_ )
 
-        # The Filtered Polar Histogram holds the actual data to be analized
+        # The Filtered Polar Histogram holds the actual data to
+        # be analized
         self.filt_polar_hist = np.zeros( hist_dim, dtype = np.float_ )
 
         # The valleys are stored as start-end pairs of sectors
@@ -171,9 +176,8 @@ class VFHModel:
                 start = x
                 break
 
-        # If no value was found over the threshold
-        # no action needs to be taken since there are
-        # no nearby obstacles
+        # If no value was found over the threshold no action
+        # needs to be taken since there are no nearby obstacles
         if start == None:
             return -1
 
@@ -189,14 +193,14 @@ class VFHModel:
 
             else:
                 if self.filt_polar_hist[index] > THRESH:
-                    self.valleys.append(tuple([v_start, index]))
+                    self.valleys.append(tuple([v_start, index-1]))
                     valley_found = False
         return 0
 
     def calculate_steering_dir(self):
 
-        # First we determine which valley is closest to the current
-        # robot orientation
+        # First we determine which valley is closest to the
+        # current robot orientation
         closest_dist = None
         closest_valley = None
 
@@ -205,7 +209,7 @@ class VFHModel:
 
         for v in self.valleys:
 
-            d1, d2 = [_dist(self.filt_polar_hist, self.k_0, sector) for sector in v]
+            d1, d2 = [self._dist(self.filt_polar_hist, self.k_0, sector) for sector in v]
 
             if closest_dist != None:
                 min_dist = min(d1, d2)
@@ -216,15 +220,29 @@ class VFHModel:
                 closest_dist = min(d1, d2)
                 closest_valley = v
 
-        # Then we need to determine the middle of the valley and that sector
-        # will be the direction
+        # Then we need to determine the middle of the valley and
+        # that sector will be the direction
         s1, s2 = closest_valley
-        v_size = (s2 - s1) if s2 > s1 else HIST_SIZE - (s1-s2)
-        new_dir = ALPHA * ((s1 + v_size/2)% HIST_SIZE)
+        v_size = (s2 - s1) if s2 >= s1 else HIST_SIZE - (s1-s2)
+        new_dir = ALPHA * (s1 + v_size/2.0)
+        if new_dir >= 360:
+            new_dir = new_dir - 360
+        return new_dir
 
     def calculate_speed(self):
-        pass
 
+        # Obstacle density in the current direction of travel
+        H_M = 1000.0
+        h_cp = self.filt_polar_hist[self.k_0]
+        h_cpp = min(h_cp, H_M)
+
+        V_prime = V_MAX*(1 - h_cpp/H_M)
+
+        V = V_prime*(1 - omega/OMEGA_MAX) + V_MIN
+
+        return V
+
+    @staticmethod
     def _dist(array,i,j):
         n_dist = abs(i-j)
         return min(n_dist, len(array) - n_dist)
@@ -244,7 +262,7 @@ def main():
     
     print("Updating the obstacle grid and robot position")
 
-    robot.update_position(52.1,50.7,0.0)
+    robot.update_position(0.52,0.50,220.0)
 
     robot.obstacle_grid[1,6] = 1
     robot.obstacle_grid[1,5] = 2
@@ -280,6 +298,9 @@ def main():
     robot.find_valleys()
     print robot.valleys, "\n"
 
+    print "Setting steer direction"
+    cita = robot.calculate_steering_dir()
+    print cita, "\n"
 
     ### Figuras y graficos ###
     plt.figure(1)
