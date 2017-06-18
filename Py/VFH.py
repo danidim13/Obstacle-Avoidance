@@ -18,7 +18,7 @@ RESOLUTION = np.float_(0.10)
 
 # Size of the active window that
 # travels with the robot
-WINDOW_SIZE = 9
+WINDOW_SIZE = 13
 assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
 WINDOW_CENTER = WINDOW_SIZE/2
 
@@ -113,7 +113,22 @@ class VFHModel:
         self.k_0 = int(cita / ALPHA)%HIST_SIZE
 
     def update_obstacle_density(self, sensor_readings):
-        pass
+        # Receives a numpy array of (r, theta) data points #
+        # r in meters, theta in radians
+        # 0,0 means no reading
+
+        if (type(sensor_readings) != np.ndarray):
+            raise TypeError("Expected numpy ndarray, received %s" % type(sensor_readings))
+        elif sensor_readings.ndim != 2 or sensor_readings.shape[1] != 2:
+            raise ValueError("Expected (n, 2) array, received %s" % str(sensor_readings.shape))
+
+        for x in xrange(sensor_readings.shape[0]):
+            r, theta = sensor_readings[x,:]
+            if r == 0 and theta == 0:
+                continue
+            i = int( (self.x_0 + r*np.cos(theta + np.radians(self.cita)))/RESOLUTION )
+            j = int( (self.y_0 + r*np.sin(theta + np.radians(self.cita)))/RESOLUTION )
+            if self.obstacle_grid[i,j] < 20: self.obstacle_grid[i,j] += 1
 
     def _active_grid(self):
 
@@ -262,25 +277,29 @@ def main():
     
     print("Updating the obstacle grid and robot position")
 
-    robot.update_position(0.52,0.50,220.0)
+    robot.update_position(1.5,1.5,90.0)
 
-    robot.obstacle_grid[1,6] = 1
-    robot.obstacle_grid[1,5] = 2
-    robot.obstacle_grid[1,4] = 2
-    robot.obstacle_grid[1,3] = 5
-    robot.obstacle_grid[1,2] = 13
-    robot.obstacle_grid[2,2] = 3
-    robot.obstacle_grid[3,2] = 3
-    robot.obstacle_grid[4,2] = 3
-
-    robot.obstacle_grid[9,2] = 4
-    robot.obstacle_grid[9,3] = 5
-    robot.obstacle_grid[9,4] = 6
-    robot.obstacle_grid[9,5] = 5
-    robot.obstacle_grid[9,6] = 4
+#    robot.obstacle_grid[1,6] = 1
+#    robot.obstacle_grid[1,5] = 2
+#    robot.obstacle_grid[1,4] = 2
+#    robot.obstacle_grid[1,3] = 5
+#    robot.obstacle_grid[1,2] = 13
+#    robot.obstacle_grid[2,2] = 3
+#    robot.obstacle_grid[3,2] = 3
+#    robot.obstacle_grid[4,2] = 3
+#
+#    robot.obstacle_grid[9,2] = 4
+#    robot.obstacle_grid[9,3] = 5
+#    robot.obstacle_grid[9,4] = 6
+#    robot.obstacle_grid[9,5] = 5
+#    robot.obstacle_grid[9,6] = 4
 
     print robot.i_0, robot.j_0
     print robot._active_grid(), "\n"
+
+    print "Simulating a set of sensor readings"
+    pseudo_readings = np.float_([[0.5, np.radians(x)] for x in range(0,90,2)])
+    robot.update_obstacle_density(pseudo_readings)
 
     print "Updating the active window"
     robot.update_active_window()
