@@ -11,10 +11,10 @@ import matplotlib.pyplot as plt
 ###                                 ####
 
 # Size of the full Grid
-GRID_SIZE = 100
+GRID_SIZE = 200
 
 # Resolution of each cell (in m)
-RESOLUTION = np.float_(0.10)
+RESOLUTION = np.float_(0.05)
 
 # Size of the active window that
 # travels with the robot
@@ -30,7 +30,7 @@ if np.mod(360, ALPHA) != 0:
 HIST_SIZE = 360/ALPHA
 
 # Valley/Peak threshold
-THRESH = 600.0
+THRESH = 900.0
 V_MAX = 0.23
 V_MIN = 0.01
 OMEGA_MAX = 5.0
@@ -58,7 +58,7 @@ class VFHModel:
         # The Obstacle Grid keeps count of the certainty values
         # for each cell in the grid
         grid_dim = (GRID_SIZE, GRID_SIZE)
-        self.obstacle_grid = np.zeros( grid_dim, dtype = np.int16 )
+        self.obstacle_grid = np.zeros( grid_dim, dtype = np.int8 )
 
         # The Active Window has information (magnitude,
         # direction, distance to robot) of an obstacle vector
