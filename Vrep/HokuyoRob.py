@@ -14,6 +14,7 @@ sys.path.insert(0, windows_path)
 #sys.path.insert(0, linux_path)
 #print sys.path
 import Braitenberg as brait
+import VFH as vfh
 
 logfile_name = 'HokuyoRob.log'
 print "Redirecting stdout and stderr to logfile %s" % logfile_name
@@ -91,6 +92,10 @@ def runSim(argc, argv):
         ### Global var definition ###
         ### and initialization    ###
         
+        robot = vfh.VFHModel()
+        X_TRAS = 2.5
+        Y_TRAS = 2.5
+
         motorSpeeds = [0., 0.]
         sensorReadings = [0., 0.]
 
@@ -145,16 +150,14 @@ def runSim(argc, argv):
             laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_buffer)
 
             # Process position
-            if posReturnCode == vrep.simx_return_ok:
+            if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
                 print "Pos Signal read"
-                posData = vrep.simxUnpackFloats(posSignal)
-                print posData
-
-            # Process orientation
-            if oriReturnCode == vrep.simx_return_ok:
                 print "Ori Signal read"
-                oriData = vrep.simxUnpackFloats(oriSignal)
-                print oriData
+                x, y, z = vrep.simxUnpackFloats(posSignal)
+                alpha, beta, gama = vrep.simxUnpackFloats(oriSignal)
+                robot.update_position(x + X_TRAS, y + Y_TRAS, np.degrees(gama))
+                #print posData
+                #print oriData
 
             ## Process Laser Sensor ##
             if laserReturnCode == vrep.simx_return_ok:
@@ -180,6 +183,21 @@ def runSim(argc, argv):
                     radians = np.arctan2(laserPoints[:,1],laserPoints[:,0])
                     dist = np.sqrt(np.square(laserPoints[:,0]) + np.square(laserPoints[:,1]))
                     new_data = np.vstack((dist,radians)).T
+
+            ## Main control logic for VFH
+            if posReturnCode == vrep.simx_return_ok and\
+                    oriReturnCode == vrep.simx_return_ok and\
+                    laserReturnCode == vrep.simx_return_ok:
+
+                robot.update_obstacle_density(new_data)
+                robot.update_active_window()
+                robot.update_polar_histogram()
+                robot.update_filtered_polar_histogram()
+                if robot.find_valleys() != -1:
+                    vfh_dir = robot.calculate_steering_dir()
+                    vfh_speed = robot.calculate_speed()
+                    print "Steer to %f.2 VFH" % vfh_dir
+
 
 
             elif laserReturnCode == vrep.simx_return_novalue_flag:
