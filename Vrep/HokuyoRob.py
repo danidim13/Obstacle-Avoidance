@@ -63,13 +63,15 @@ def runSim(argc, argv):
     rightSensorHandle = None
 
     print "Initializing values"
-    if argc == 7:
+    if argc == 9:
         portNb = int(argv[1])
         leftMotorHandle = int(argv[2])
         rightMotorHandle = int(argv[3])
         leftSensorHandle = int(argv[4])
         rightSensorHandle = int(argv[5])
         laserSignalName = str(argv[6])
+        posSignalName = str(argv[7])
+        oriSignalName = str(argv[8])
     else:
         print "Arguments error"
         time.sleep(5)
@@ -91,6 +93,8 @@ def runSim(argc, argv):
         
         motorSpeeds = [0., 0.]
         sensorReadings = [0., 0.]
+
+        # Laser Signal
         laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_streaming)
         if laserReturnCode == vrep.simx_return_ok:
             print "Laser Signal returned ok on first call, this is unexpeted"
@@ -99,6 +103,26 @@ def runSim(argc, argv):
         else:
             print "ERROR: failed to open the Laser Signal stream"
             raise Exception("Error while opening %s StringSignal, call returned %d" % (laserSignal, laserReturnCode))
+
+        # Position Signal
+        posReturnCode, posSignal = vrep.simxGetStringSignal(clientID, posSignalName, vrep.simx_opmode_streaming)
+        if posReturnCode == vrep.simx_return_ok:
+            print "Pos Signal returned ok on first call, this is unexpeted"
+        elif posReturnCode == vrep.simx_return_novalue_flag:
+            print "Pos Signal stream opened succesfully!"
+        else:
+            print "ERROR: failed to open the Pos Signal stream"
+            raise Exception("Error while opening %s StringSignal, call returned %d" % (posSignal, posReturnCode))
+
+        # Orientation Signal
+        oriReturnCode, oriSignal = vrep.simxGetStringSignal(clientID, oriSignalName, vrep.simx_opmode_streaming)
+        if oriReturnCode == vrep.simx_return_ok:
+            print "Ori Signal returned ok on first call, this is unexpeted"
+        elif oriReturnCode == vrep.simx_return_novalue_flag:
+            print "Ori Signal stream opened succesfully!"
+        else:
+            print "ERROR: failed to open the Ori Signal stream"
+            raise Exception("Error while opening %s StringSignal, call returned %d" % (oriSignal, oriReturnCode))
 
         prevLaserSignal = ""
         ### End of initialization ###
@@ -116,7 +140,21 @@ def runSim(argc, argv):
             leftReturnCode, leftSensorTrigger, leftData, leftDist = vrep.simxReadProximitySensor(clientID,leftSensorHandle,vrep.simx_opmode_streaming)[0:4]
             rightReturnCode, rightSensorTrigger, rightData, rightDist = vrep.simxReadProximitySensor(clientID,rightSensorHandle,vrep.simx_opmode_streaming)[0:4]
 
+            posReturnCode, posSignal = vrep.simxGetStringSignal(clientID, posSignalName, vrep.simx_opmode_buffer)
+            oriReturnCode, oriSignal = vrep.simxGetStringSignal(clientID, oriSignalName, vrep.simx_opmode_buffer)
             laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_buffer)
+
+            # Process position
+            if posReturnCode == vrep.simx_return_ok:
+                print "Pos Signal read"
+                posData = vrep.simxUnpackFloats(posSignal)
+                print posData
+
+            # Process orientation
+            if oriReturnCode == vrep.simx_return_ok:
+                print "Ori Signal read"
+                oriData = vrep.simxUnpackFloats(oriSignal)
+                print oriData
 
             ## Process Laser Sensor ##
             if laserReturnCode == vrep.simx_return_ok:
@@ -144,7 +182,6 @@ def runSim(argc, argv):
                 print "Laser Signal didn't have a value ready"
             else:
                 print "ERROR: failed to read Laser Signal"
-
 
 
             ## Process Proximity sensors ##
