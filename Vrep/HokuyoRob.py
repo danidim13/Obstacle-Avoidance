@@ -177,6 +177,10 @@ def runSim(argc, argv):
                     for i in xrange(total_points):
                         if not np.array_equal(laserPoints[i, :], [0, 0, 0]):
                             print laserPoints[i, :]
+                    radians = np.arctan2(laserPoints[:,1],laserPoints[:,0])
+                    dist = np.sqrt(np.square(laserPoints[:,0]) + np.square(laserPoints[:,1]))
+                    new_data = np.vstack((dist,radians)).T
+
 
             elif laserReturnCode == vrep.simx_return_novalue_flag:
                 print "Laser Signal didn't have a value ready"
