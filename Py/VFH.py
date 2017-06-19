@@ -106,11 +106,11 @@ class VFHModel:
     def update_position(self, x, y, cita):
         self.x_0 = x
         self.y_0 = y
-        self.cita = cita
+        self.cita = cita if cita >= 0 else cita + 360
 
         self.i_0 = int(x / RESOLUTION)
         self.j_0 = int(y / RESOLUTION)
-        self.k_0 = int(cita / ALPHA)%HIST_SIZE
+        self.k_0 = int(self.cita / ALPHA)%HIST_SIZE
 
     def update_obstacle_density(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
@@ -247,6 +247,7 @@ class VFHModel:
     def calculate_speed(self):
 
         # Obstacle density in the current direction of travel
+        omega = 0.0
         H_M = 1000.0
         h_cp = self.filt_polar_hist[self.k_0]
         h_cpp = min(h_cp, H_M)
