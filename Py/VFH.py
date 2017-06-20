@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 ########################################
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 ###                                 ####
 
 # Size of the full Grid
-GRID_SIZE = 200
+GRID_SIZE = 100
 
 # Resolution of each cell (in m)
 RESOLUTION = np.float_(0.05)
@@ -154,7 +154,7 @@ class VFHModel:
                 if grid_i < 0 or grid_i > GRID_SIZE or grid_j < 0 or grid_j > GRID_SIZE:
                     self.active_window[i,j,MAG] = 0.0
                 else :
-                    cij = self.obstacle_grid[grid_i, grid_j]
+                    cij = np.float_(self.obstacle_grid[grid_i, grid_j])
                     mij = np.square(cij)*(A - B*self.active_window[i, j, DIST2])
                     self.active_window[i,j,MAG] = mij
 
