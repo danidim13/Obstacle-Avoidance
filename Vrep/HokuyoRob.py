@@ -6,6 +6,13 @@ import time
 import math
 import numpy as np
 
+logfile_name = 'HokuyoRob.log'
+print "Redirecting stdout and stderr to logfile %s" % logfile_name
+sys.stdout.flush()
+logfile = open(logfile_name, 'w')
+sys.stdout = logfile
+print "LOG START"
+
 windows_path = 'C:\\Program Files (x86)\\V-REP3\\V-REP_PRO_EDU\\Obstacle-Avoidance\\Py'
 linux_path = '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py'
 #sys.path.insert(0, '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py')
@@ -16,12 +23,6 @@ sys.path.insert(0, windows_path)
 import Braitenberg as brait
 import VFH as vfh
 
-logfile_name = 'HokuyoRob.log'
-print "Redirecting stdout and stderr to logfile %s" % logfile_name
-sys.stdout.flush()
-logfile = open(logfile_name, 'w')
-sys.stdout = logfile
-print "LOG START"
 
 
 try:
@@ -176,27 +177,27 @@ def runSim(argc, argv):
                     laserPoints = np.float_(laserData).reshape((total_points,3))
 
                     print "Total %d floats, %d points" % (len(laserData), total_points)
-                    print laserPoints
-                    for i in xrange(total_points):
-                        if not np.array_equal(laserPoints[i, :], [0, 0, 0]):
-                            print laserPoints[i, :]
+                    #print laserPoints
+                    #for i in xrange(total_points):
+                    #    if not np.array_equal(laserPoints[i, :], [0, 0, 0]):
+                    #        print laserPoints[i, :]
                     radians = np.arctan2(laserPoints[:,1],laserPoints[:,0])
                     dist = np.sqrt(np.square(laserPoints[:,0]) + np.square(laserPoints[:,1]))
                     new_data = np.vstack((dist,radians)).T
 
             ## Main control logic for VFH
-            if posReturnCode == vrep.simx_return_ok and\
-                    oriReturnCode == vrep.simx_return_ok and\
-                    laserReturnCode == vrep.simx_return_ok:
-
+            if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok and laserReturnCode == vrep.simx_return_ok:
                 robot.update_obstacle_density(new_data)
                 robot.update_active_window()
                 robot.update_polar_histogram()
                 robot.update_filtered_polar_histogram()
                 if robot.find_valleys() != -1:
+                    print "Obstacle Detected!"
                     vfh_dir = robot.calculate_steering_dir()
                     vfh_speed = robot.calculate_speed()
                     print "Steer to %f.2 VFH" % vfh_dir
+                else:
+                    print "No nearby obstacles"
 
 
 
@@ -235,12 +236,32 @@ def runSim(argc, argv):
 
         ### End of Simulation loop ###
         ##############################
-
         vrep.simxFinish(clientID)
+
+        print "\nEnd of Simulation"
+
+        print "\nRobot position and orientation"
+        print robot.x_0, robot.y_0, robot.cita
+
+        print "\nRobot i, j, k"
+        print robot.i_0, robot.j_0, robot.k_0
+
+        print "\nRobot active grid"
+        print robot._active_grid()
+
+        print "\nRobot polar histogram"
+        print robot.polar_hist
+
+        print "\nRobot filtered histogram"
+        print robot.filt_polar_hist
+
+        print "\nValleys"
+        print robot.valleys
 
     return 0
 
 if __name__ == "__main__":
+    np.set_printoptions(threshold=np.inf)
     try:
         runSim(len(sys.argv), sys.argv)
     except Exception as inst:
