@@ -21,6 +21,7 @@ sys.path.insert(0, windows_path)
 #sys.path.insert(0, linux_path)
 #print sys.path
 import Braitenberg as brait
+import DiffRobot as DR
 import VFH as vfh
 
 
@@ -93,9 +94,15 @@ def runSim(argc, argv):
         ### Global var definition ###
         ### and initialization    ###
         
-        robot = vfh.VFHModel()
+        #robot = vfh.VFHModel()
+        print "Iniciando el robot!"
+        robot = DR.DiffRobot()
+
         X_TRAS = 2.5
         Y_TRAS = 2.5
+        robot.set_initial_pos(X_TRAS, Y_TRAS,0)
+
+        simTime = 0.0
 
         motorSpeeds = [0., 0.]
         sensorReadings = [0., 0.]
@@ -143,12 +150,22 @@ def runSim(argc, argv):
             ### Read Sensors ###
 
             #print "Reading sensors..."
-            leftReturnCode, leftSensorTrigger, leftData, leftDist = vrep.simxReadProximitySensor(clientID,leftSensorHandle,vrep.simx_opmode_streaming)[0:4]
-            rightReturnCode, rightSensorTrigger, rightData, rightDist = vrep.simxReadProximitySensor(clientID,rightSensorHandle,vrep.simx_opmode_streaming)[0:4]
+            #leftReturnCode, leftSensorTrigger, leftData, leftDist = vrep.simxReadProximitySensor(clientID,leftSensorHandle,vrep.simx_opmode_streaming)[0:4]
+            #rightReturnCode, rightSensorTrigger, rightData, rightDist = vrep.simxReadProximitySensor(clientID,rightSensorHandle,vrep.simx_opmode_streaming)[0:4]
 
             posReturnCode, posSignal = vrep.simxGetStringSignal(clientID, posSignalName, vrep.simx_opmode_buffer)
             oriReturnCode, oriSignal = vrep.simxGetStringSignal(clientID, oriSignalName, vrep.simx_opmode_buffer)
             laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_buffer)
+
+            now = vrep.simxGetLastCmdTime(clientID)
+            print now
+            if (now == simTime):
+                "Simulation has not advanced, skipping..."
+                continue
+            else:
+                print "SIMTIME ", now
+                delta_t = (now - simTime)/100.0
+                simTime = now
 
             # Process position
             if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
@@ -156,7 +173,7 @@ def runSim(argc, argv):
                 print "Ori Signal read"
                 x, y, z = vrep.simxUnpackFloats(posSignal)
                 alpha, beta, gama = vrep.simxUnpackFloats(oriSignal)
-                robot.update_position(x + X_TRAS, y + Y_TRAS, np.degrees(gama))
+                robot.update_pos(x + X_TRAS, y + Y_TRAS, gama, delta_t)
                 #print posData
                 #print oriData
 
@@ -185,48 +202,49 @@ def runSim(argc, argv):
                     dist = np.sqrt(np.square(laserPoints[:,0]) + np.square(laserPoints[:,1]))
                     new_data = np.vstack((dist,radians)).T
 
-            ## Main control logic for VFH
-            if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok and laserReturnCode == vrep.simx_return_ok:
-                robot.update_obstacle_density(new_data)
-                robot.update_active_window()
-                robot.update_polar_histogram()
-                robot.update_filtered_polar_histogram()
-                if robot.find_valleys() != -1:
-                    print "Obstacle Detected!"
-                    vfh_dir = robot.calculate_steering_dir()
-                    vfh_speed = robot.calculate_speed()
-                    print "Steer to %f.2 VFH" % vfh_dir
-                else:
-                    print "No nearby obstacles"
-
-
-
             elif laserReturnCode == vrep.simx_return_novalue_flag:
                 print "Laser Signal didn't have a value ready"
             else:
                 print "ERROR: failed to read Laser Signal"
 
+            ## Main control logic for VFH
+            if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok and laserReturnCode == vrep.simx_return_ok:
+                robot.update_readings(new_data)
+                robot.update_target()
+
+                #robot.update_active_window()
+                #robot.update_polar_histogram()
+                #robot.update_filtered_polar_histogram()
+                #if robot.find_valleys() != -1:
+                #    print "Obstacle Detected!"
+                #    vfh_dir = robot.calculate_steering_dir()
+                #    vfh_speed = robot.calculate_speed()
+                #    print "Steer to %f.2 VFH" % vfh_dir
+                #else:
+                #    print "No nearby obstacles"
+
+
 
             ## Process Proximity sensors ##
-            if (leftReturnCode == vrep.simx_return_ok and rightReturnCode == vrep.simx_return_ok):
-                # We succeeded at reading the proximity sensor
-                dleft = brait.D_MAX
-                dright = brait.D_MAX
+#            if (leftReturnCode == vrep.simx_return_ok and rightReturnCode == vrep.simx_return_ok):
+#                # We succeeded at reading the proximity sensor
+#                dleft = brait.D_MAX
+#                dright = brait.D_MAX
+#
+#                if (leftSensorTrigger):
+#                    #print "Detected something on the left!"
+#                    #print leftData
+#                    #print leftDist
+#                    dleft = math.sqrt(sum([x**2 for x in leftData]))
+#                if (rightSensorTrigger):
+#                    #print "Detected something on the right!"
+#                    #print rightData
+#                    #print rightDist
+#                    dright = math.sqrt(sum([x**2 for x in rightData]))
+#                vleft, vright = brait.Braitenberg2b(dleft, dright)
 
-                if (leftSensorTrigger):
-                    #print "Detected something on the left!"
-                    #print leftData
-                    #print leftDist
-                    dleft = math.sqrt(sum([x**2 for x in leftData]))
-                if (rightSensorTrigger):
-                    #print "Detected something on the right!"
-                    #print rightData
-                    #print rightDist
-                    dright = math.sqrt(sum([x**2 for x in rightData]))
-                vleft, vright = brait.Braitenberg2b(dleft, dright)
-
-                motorSpeeds[0] = vleft
-                motorSpeeds[1] = vright
+                motorSpeeds[0] = robot.left_motor
+                motorSpeeds[1] = robot.right_motor
 
 
             ## Set motor speeds
@@ -241,22 +259,22 @@ def runSim(argc, argv):
         print "\nEnd of Simulation"
 
         print "\nRobot position and orientation"
-        print robot.x_0, robot.y_0, robot.cita
+        print robot.model.x_0, robot.model.y_0, robot.model.cita
 
         print "\nRobot i, j, k"
-        print robot.i_0, robot.j_0, robot.k_0
+        print robot.model.i_0, robot.model.j_0, robot.model.k_0
 
         print "\nRobot active grid"
-        print robot._active_grid()
+        print robot.model._active_grid()
 
         print "\nRobot polar histogram"
-        print robot.polar_hist
+        print robot.model.polar_hist
 
         print "\nRobot filtered histogram"
-        print robot.filt_polar_hist
+        print robot.model.filt_polar_hist
 
         print "\nValleys"
-        print robot.valleys
+        print robot.model.valleys
 
     return 0
 
