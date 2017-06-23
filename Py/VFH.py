@@ -248,7 +248,7 @@ class VFHModel:
 
         # Obstacle density in the current direction of travel
         omega = 0.0
-        H_M = 1000.0
+        H_M = 4000.0
         h_cp = self.filt_polar_hist[self.k_0]
         h_cpp = min(h_cp, H_M)
 
