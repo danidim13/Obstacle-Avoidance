@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 ########################################
@@ -18,22 +18,23 @@ RESOLUTION = np.float_(0.05)
 
 # Size of the active window that
 # travels with the robot
-WINDOW_SIZE = 13
+WINDOW_SIZE = 15
 assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
 WINDOW_CENTER = WINDOW_SIZE/2
 
 # Size of each polar sector
 # in the polar histogram (in degrees)
-ALPHA = 10
+ALPHA = 5
 if np.mod(360, ALPHA) != 0:
     raise ValueError("Alpha must define an int amount of sectors")
 HIST_SIZE = 360/ALPHA
 
 # Valley/Peak threshold
-THRESH = 900.0
-V_MAX = 0.23
-V_MIN = 0.01
-OMEGA_MAX = 5.0
+THRESH = 20000.0
+WIDE_V = HIST_SIZE/4
+V_MAX = 0.0628
+V_MIN = 0.00628
+OMEGA_MAX = 1.256
 
 # Constants for virtual vector magnitude calculations
 # D_max^2 = 2*(ws-1/2)^2
@@ -178,7 +179,7 @@ class VFHModel:
     def update_filtered_polar_histogram(self):
 
         ## Amount of adyacent sectors to filter
-        L = 3
+        L = 5
         assert (2*L + 1) < HIST_SIZE
         for i in xrange(HIST_SIZE):
             coef = [[L - abs(L-j) + 1, (i + (j-L))%HIST_SIZE] for j in xrange(2*L+1)]
@@ -218,6 +219,7 @@ class VFHModel:
         # current robot orientation
         closest_dist = None
         closest_valley = None
+        closest_sect = None
 
         if len(self.valleys) == 0:
             raise Exception("No candidate valleys found to calculate a new direction")
@@ -231,24 +233,67 @@ class VFHModel:
                 if min_dist < closest_dist:
                     closest_dist = min_dist
                     closest_valley = v
+                    if d1 < d2:
+                        closest_sect = 0
+                    else:
+                        closest_sect = 1
+
             else:
                 closest_dist = min(d1, d2)
                 closest_valley = v
+                if d1 < d2:
+                    closest_sect = 0
+                else:
+                    closest_sect = 1
 
-        # Then we need to determine the middle of the valley and
-        # that sector will be the direction
+        print "Closest valley is %s" % str(closest_valley)
         s1, s2 = closest_valley
         v_size = (s2 - s1) if s2 >= s1 else HIST_SIZE - (s1-s2)
-        new_dir = ALPHA * (s1 + v_size/2.0)
+
+        if v_size < WIDE_V :
+            # For narrow valleys move in the direction of the middle of
+            # the valley.
+            print "Crossing a narrow valley"
+            new_dir = ALPHA * (s1 + v_size/2.0)
+        else:
+            print "Crossing a wide valley"
+
+            # For wide valleys move in the direction of travel if
+            # the closest distance is bigger than WIDE_V/2 and its
+            # inside the valley
+            if closest_dist > WIDE_V/2.0:
+                k_inside = False
+                if s1 < s2:
+                    k_inside = s1 < self.k_0 and self.k_0 < s2
+                else:
+                    k_inside = not (s2 < self.k_0 and self.k_0 < s1)
+
+                if k_inside:
+                    print "Maintining current direction"
+                    new_dir = ALPHA * self.k_0
+                else:
+                    print "Current direction is blocked!"
+
+            # If the target is closer to the edge then travel near
+            # the closer edge of the valley
+            elif closest_sect == 0:
+                print "Staying near right"
+                new_dir = ALPHA * (s1 + WIDE_V/2.0)
+            else:
+                print "Staying near left"
+                new_dir = ALPHA * (s2 - WIDE_V/2.0)
+
         if new_dir >= 360:
             new_dir = new_dir - 360
+        elif new_dir < 0:
+            new_dir = new_dir + 360
         return new_dir
 
-    def calculate_speed(self):
+    def calculate_speed(self, omega=0):
 
+        # Omega in [rad/s]
         # Obstacle density in the current direction of travel
-        omega = 0.0
-        H_M = 4000.0
+        H_M = 40000.0
         h_cp = self.filt_polar_hist[self.k_0]
         h_cpp = min(h_cp, H_M)
 
@@ -278,7 +323,7 @@ def main():
     
     print("Updating the obstacle grid and robot position")
 
-    robot.update_position(1.5,1.5,90.0)
+    robot.update_position(1.5,1.5,270.0)
 
 #    robot.obstacle_grid[1,6] = 1
 #    robot.obstacle_grid[1,5] = 2
@@ -299,7 +344,7 @@ def main():
     print robot._active_grid(), "\n"
 
     print "Simulating a set of sensor readings"
-    pseudo_readings = np.float_([[0.5, np.radians(x)] for x in range(0,90,2)])
+    pseudo_readings = np.float_([[0.2, np.radians(x)] for x in range(0,90,2)])
     robot.update_obstacle_density(pseudo_readings)
 
     print "Updating the active window"
@@ -318,9 +363,12 @@ def main():
     robot.find_valleys()
     print robot.valleys, "\n"
 
-    print "Setting steer direction"
-    cita = robot.calculate_steering_dir()
-    print cita, "\n"
+    try:
+        print "Setting steer direction"
+        cita = robot.calculate_steering_dir()
+        print cita, "\n"
+    except:
+        pass
 
     ### Figuras y graficos ###
     plt.figure(1)
@@ -330,11 +378,11 @@ def main():
     plt.title("Histograma polar")
 
     plt.figure(2)
-    plt.bar(i, robot.filt_polar_hist, 0.1, 0, color='b')
+    plt.plot(i, robot.filt_polar_hist ) #, 0.1, 0, color='b')
     plt.title("Histograma polar filtrado")
 
     plt.figure(3)
-    plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=15)
+    plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
     plt.xlabel("X")
     plt.ylabel("Y", rotation='horizontal')
     
