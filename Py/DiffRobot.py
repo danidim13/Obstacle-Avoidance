@@ -3,27 +3,38 @@ import numpy as np
 import PID
 import VFH
 
+TARGET_X = 2.5
+TARGET_Y = 3.5
+
 # Robot differencial
 class DiffRobot(object):
 
-    def __init__(self, r=0.02, b=0.05, w_max=0.261):
+    def __init__(self, r=0.02, b=0.05, wm_max=6.28):
         # r = radio de las ruedas [m]
         self.r = r
 
         # b = distancia entre las ruedas [m]
         self.b = b
 
-        # wm = maxima velocidad de rotacion del robot [rad/s]
-        self.w_max = w_max
+        # wm = maxima velocidad angular de rotacion de las ruedas
+        # omega max = maxima velocidad angular de rotacion del robot
+        self.wm_max = wm_max
+        self.omega_max = 0.9*r*wm_max/b
+        self.v_max = 0.9*r*wm_max
 
+        VFH.OMEGA_MAX = self.omega_max
+        VFH.V_MAX = self.v_max
+        VFH.V_MIN = self.v_max*0.2
         self.model = VFH.VFHModel()
 
         # Valores deseados de velocidad, velocidad angular y
         # orientacion
         self.v_ref = 0.0
         self.w_ref = 0.0
+        self.w_prev = 0.0
 
         self.cita = 0.0
+        self.cita_prev = 0.0
         self.cita_ref = 0.0
 
         # Velocidades de los motores
@@ -32,22 +43,29 @@ class DiffRobot(object):
 
         # Controlador PI para la orientacion del robot
         # Kp = 0.808, Ti = 3.5 (sintonizacion kogestad)
-        self.angle_controller = PID.PID(0.808, 3.5, 0, w_max, -w_max)
+        self.angle_controller = PID.PID(1.2, 10.0, 0.0, self.omega_max, -self.omega_max)
         self.angle_controller.begin(0.0)
 
     # Todas las mediciones se dan en el sistema metrico [m, rad]
     def set_initial_pos(self, x, y, cita):
         self.cita = cita
+        self.cita_prev = cita
+        self.w_prev = 0.0
         self.model.update_position(x, y, np.degrees(cita))
         self.angle_controller.setInput(cita)
         self.angle_controller.setRef(cita)
 
     def update_pos(self, x, y, cita, delta_t):
+
+        self.cita_prev = self.cita
         self.cita = cita
+        self.w_prev = 0.7*PID.angleDiff(self.cita, self.cita_prev)/delta_t + 0.3*self.w_prev
+
         # El controlador VFH requiere angulos en grados
         self.model.update_position(x, y, np.degrees(cita))
         self.angle_controller.setInput(cita)
         self.w_ref = self.angle_controller.timestep(delta_t)
+        print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
     def update_readings(self, data):
         try:
@@ -62,13 +80,16 @@ class DiffRobot(object):
         self.model.update_filtered_polar_histogram()
 
         if self.model.find_valleys() != -1:
-            print "Obstacle detected!"
             self.cita_ref = np.radians(self.model.calculate_steering_dir())
-            self.v_ref = self.model.calculate_speed()
+            self.v_ref = self.model.calculate_speed(self.w_prev)
+            print "Obstacle detected! target dir is %f" % self.cita_ref
         else:
             print "No nearby obstacles"
-            self.cita_ref = self.cita
-            self.v_ref = self.r*3.14
+            target_dir = np.arctan2(TARGET_Y - self.model.y_0 ,TARGET_X - self.model.x_0)
+            self.cita_ref = target_dir
+            print "Setting target dir at %f" % target_dir
+            #self.w_ref = 0.0
+            self.v_ref = self.v_max
 
         # Se actualiza el valor deseado de orientacion
         # en el controlador
