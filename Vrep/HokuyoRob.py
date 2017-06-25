@@ -1,10 +1,11 @@
-#! python
-# /usr/bin/python
+#! /usr/bin/python
+# python
 
 import sys
 import time
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 logfile_name = 'HokuyoRob.log'
 print "Redirecting stdout and stderr to logfile %s" % logfile_name
@@ -15,11 +16,10 @@ print "LOG START"
 
 windows_path = 'C:\\Program Files (x86)\\V-REP3\\V-REP_PRO_EDU\\Obstacle-Avoidance\\Py'
 linux_path = '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py'
-#sys.path.insert(0, '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py')
-#print sys.path
-sys.path.insert(0, windows_path)
-#sys.path.insert(0, linux_path)
-#print sys.path
+
+#sys.path.insert(0, windows_path)
+sys.path.insert(0, linux_path)
+
 import Braitenberg as brait
 import DiffRobot as DR
 import VFH as vfh
@@ -100,6 +100,7 @@ def runSim(argc, argv):
 
         X_TRAS = 2.5
         Y_TRAS = 2.5
+        G_TRAS = 0.0
         robot.set_initial_pos(X_TRAS, Y_TRAS,0)
 
         simTime = 0.0
@@ -158,14 +159,13 @@ def runSim(argc, argv):
             laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_buffer)
 
             now = vrep.simxGetLastCmdTime(clientID)
-            print now
+            #print now
             if (now == simTime):
                 "Simulation has not advanced, skipping..."
                 continue
-            else:
-                print "SIMTIME ", now
-                delta_t = (now - simTime)/100.0
-                simTime = now
+            print "\nSIMTIME ", now
+            delta_t = (now - simTime)/100.0
+            simTime = now
 
             # Process position
             if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
@@ -176,6 +176,8 @@ def runSim(argc, argv):
                 robot.update_pos(x + X_TRAS, y + Y_TRAS, gama, delta_t)
                 #print posData
                 #print oriData
+                print "current pos: %f, %f, %f" % (x, y, gama)
+                print "Acording to robot: %f, %f, %f" % (robot.model.x_0, robot.model.y_0, robot.model.cita)
 
             ## Process Laser Sensor ##
             if laserReturnCode == vrep.simx_return_ok:
@@ -193,7 +195,7 @@ def runSim(argc, argv):
                     total_points = len(laserData)/3
                     laserPoints = np.float_(laserData).reshape((total_points,3))
 
-                    print "Total %d floats, %d points" % (len(laserData), total_points)
+                    #print "Total %d floats, %d points" % (len(laserData), total_points)
                     #print laserPoints
                     #for i in xrange(total_points):
                     #    if not np.array_equal(laserPoints[i, :], [0, 0, 0]):
@@ -201,6 +203,11 @@ def runSim(argc, argv):
                     radians = np.arctan2(laserPoints[:,1],laserPoints[:,0])
                     dist = np.sqrt(np.square(laserPoints[:,0]) + np.square(laserPoints[:,1]))
                     new_data = np.vstack((dist,radians)).T
+                    robot.update_readings(new_data)
+                    #for i in xrange(new_data.shape[0]):
+                    #    if not np.array_equal(new_data[i,:], [0, 0]):
+                    #        print new_data[i,:]
+
 
             elif laserReturnCode == vrep.simx_return_novalue_flag:
                 print "Laser Signal didn't have a value ready"
@@ -209,20 +216,7 @@ def runSim(argc, argv):
 
             ## Main control logic for VFH
             if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok and laserReturnCode == vrep.simx_return_ok:
-                robot.update_readings(new_data)
                 robot.update_target()
-
-                #robot.update_active_window()
-                #robot.update_polar_histogram()
-                #robot.update_filtered_polar_histogram()
-                #if robot.find_valleys() != -1:
-                #    print "Obstacle Detected!"
-                #    vfh_dir = robot.calculate_steering_dir()
-                #    vfh_speed = robot.calculate_speed()
-                #    print "Steer to %f.2 VFH" % vfh_dir
-                #else:
-                #    print "No nearby obstacles"
-
 
 
             ## Process Proximity sensors ##
@@ -243,8 +237,8 @@ def runSim(argc, argv):
 #                    dright = math.sqrt(sum([x**2 for x in rightData]))
 #                vleft, vright = brait.Braitenberg2b(dleft, dright)
 
-                motorSpeeds[0] = robot.left_motor
-                motorSpeeds[1] = robot.right_motor
+            motorSpeeds[0] = robot.left_motor
+            motorSpeeds[1] = robot.right_motor
 
 
             ## Set motor speeds
@@ -275,6 +269,24 @@ def runSim(argc, argv):
 
         print "\nValleys"
         print robot.model.valleys
+        sys.stdout.flush()
+
+        # Figuras y graficos
+        plt.figure(1)
+        x = [vfh.ALPHA*x for x in range(len(robot.model.filt_polar_hist))]
+        i = [a for a in range(len(robot.model.filt_polar_hist))]
+        plt.bar(x, robot.model.polar_hist, 8.0, 0, color='r')
+        plt.title("Histograma polar")
+
+        plt.figure(2)
+        plt.bar(i, robot.model.filt_polar_hist, 0.1, 0, color='b')
+        plt.title("Histograma polar filtrado")
+
+        plt.figure(3)
+        plt.pcolor(robot.model._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+        plt.xlabel("X")
+        plt.ylabel("Y", rotation='horizontal')
+        plt.show()
 
     return 0
 
