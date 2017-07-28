@@ -2,30 +2,38 @@ import sys
 import numpy as np
 import PID
 import VFH
+import Braitenberg as Brait
 
 TARGET_X = 2.5
 TARGET_Y = 3.5
 
+
 # Robot differencial
 class DiffRobot(object):
 
-    def __init__(self, r=0.02, b=0.05, wm_max=6.28):
+    def __init__(self, r=0.02, b=0.05, wm_max=6.28, c_type = 0):
         # r = radio de las ruedas [m]
         self.r = r
 
         # b = distancia entre las ruedas [m]
         self.b = b
 
-        # wm = maxima velocidad angular de rotacion de las ruedas
+        # wm_max = maxima velocidad angular de rotacion de las ruedas
         # omega max = maxima velocidad angular de rotacion del robot
         self.wm_max = wm_max
         self.omega_max = 0.9*r*wm_max/b
         self.v_max = 0.9*r*wm_max
 
-        VFH.OMEGA_MAX = self.omega_max
-        VFH.V_MAX = self.v_max
-        VFH.V_MIN = self.v_max*0.2
-        self.model = VFH.VFHModel()
+        self.model = None
+        self.c_type = c_type
+        if c_type == 0:
+            VFH.OMEGA_MAX = self.omega_max
+            VFH.V_MAX = self.v_max
+            VFH.V_MIN = self.v_max*0.2
+            self.model = VFH.VFHModel()
+        elif c_type == 1:
+            self.model = Brait.BraitModel(0.05, 0.2, -self.v_max, self.v_max)
+
 
         # Valores deseados de velocidad, velocidad angular y
         # orientacion
