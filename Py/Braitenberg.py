@@ -1,27 +1,61 @@
 #! python
 ## /usr/bin/python
 import math
+import numpy as np
 
-D_MIN = 0.01
-D_MAX = 0.1
-V_MIN = -math.pi
-V_MAX = math.pi
+ALPHA = np.pi/6.0
 
-class BraitRobot(): 
-    def __init__(self):
+class BraitModel(object): 
+    def __init__(self, d_min=0.01, d_max=0.1, v_min=-math.pi, v_max=math.pi):
+        
         self.x = 0.
         self.y = 0.
         self.cita = 0.
 
-def Braitenberg2b(d_left, d_right):
-    v_left = MapStimulus(d_right, D_MIN, D_MAX, V_MIN, V_MAX)
-    v_right = MapStimulus(d_left, D_MIN, D_MAX, V_MIN, V_MAX)
-    return v_left, v_right
-        
-def Braitenberg3a(d_left, d_right):
-    v_left = MapStimulus(d_left, D_MIN, D_MAX, V_MAX, V_MIN)
-    v_right = MapStimulus(d_right, D_MIN, D_MAX, V_MAX, V_MIN)
-    return v_left, v_right
+        # Distancia minima y maxima de vision
+        # del algoritmo
+        self.D_MIN = d_min
+        self.D_MAX = d_max
+
+        self.V_MIN = v_min
+        self.V_MAX = v_max
+
+        self.sensor_l = 0.0
+        self.sensor_r = 0.0
+
+    def Evade2b(self, d_left, d_right):
+        v_left = MapStimulus(d_right, self.D_MIN, self.D_MAX, self.V_MIN, self.V_MAX)
+        v_right = MapStimulus(d_left, self.D_MIN, self.D_MAX, self.V_MIN, self.V_MAX)
+        return v_left, v_right
+            
+    def Evade3a(self, d_left, d_right):
+        v_left = MapStimulus(d_left, self.D_MIN, self.D_MAX, self.V_MAX, self.V_MIN)
+        v_right = MapStimulus(d_right, self.D_MIN, self.D_MAX, self.V_MAX, self.V_MIN)
+        return v_left, v_right
+
+    def update_sensors(self, sensor_readings):
+        # Receives a numpy array of (r, theta) data points #
+        # r in meters, theta in radians
+        # 0,0 means no reading
+
+        if (type(sensor_readings) != np.ndarray):
+            raise TypeError("Expected numpy ndarray, received %s" % type(sensor_readings))
+        elif sensor_readings.ndim != 2 or sensor_readings.shape[1] != 2:
+            raise ValueError("Expected (n, 2) array, received %s" % str(sensor_readings.shape))
+
+        left = []
+        right = []
+        for x in xrange(sensor_readings.shape[0]):
+            r, theta = sensor_readings[x,:]
+            if r == 0 and theta == 0:
+                continue
+            if -ALPHA < theta && theta < 0:
+                # left
+                pass
+
+            elif 0 < theta < ALPHA:
+                #right
+                pass
 
 def MapStimulus(s, s_min, s_max, r_min, r_max):
     if s >= s_max:
