@@ -209,6 +209,23 @@ class VFHModel:
 
             self.bin_polar_hist[k] = blocked
 
+    def update_masked_polar_hist(self,steer_l,steer_r):
+
+        phi_back = self.cita + 180.0
+        phi_back = phi_back - 360.0 if phi_back > 360.0 else phi_back
+
+        phi_left = phi_back
+        phi_right = phi_back
+
+        for i in xrange(WINDOW_SIZE):
+            for j in xrange(WINDOW_SIZE):
+                if self.active_window[i,j,MAG] < THRESH:
+                    pass
+                else:
+                    pass
+                #TODO
+        pass
+
     def find_valleys(self):
         start = None
         for x in xrange(HIST_SIZE):
