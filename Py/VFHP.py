@@ -52,6 +52,13 @@ V_MAX = 0.0628
 V_MIN = 0.00628
 OMEGA_MAX = 1.256
 
+# Cost function constants
+# Recommended mu1 > m2 + m3
+mu1 = 5.0
+mu2 = 2.0
+mu3 = 2.0
+
+
 # Active window array indexes
 MAG = 0
 BETA = 1
@@ -121,6 +128,13 @@ class VFHModel:
         # Sector of the robot
         self.k_0 = 0
 
+        self.target = None
+        self.t_dir = 0
+        self.prev_dir = 0
+
+    def set_target(self, x, y):
+        self.target = x, y
+
     def update_position(self, x, y, cita):
         self.x_0 = x
         self.y_0 = y
@@ -129,6 +143,16 @@ class VFHModel:
         self.i_0 = int(x / RESOLUTION)
         self.j_0 = int(y / RESOLUTION)
         self.k_0 = int(self.cita / ALPHA)%HIST_SIZE
+
+        if self.target != None:
+            # If there is a target for the robot we calculate the direction
+            self.t_dir = np.degrees(np.arctan2(self.y_0-self.target[1], self.x_0-self.target[0]))
+            self.t_dir = self.t_dir if self.t_dir >= 0 else self.t_dir + 360
+        else:
+            # Else set the current direction as the target
+            self.t_dir = self.cita
+
+
 
     def update_obstacle_density(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
@@ -217,19 +241,73 @@ class VFHModel:
         phi_left = phi_back
         phi_right = phi_back
 
+        X_r = WINDOW_SIZE*RESOLUTION/2.0
+        Y_r = WINDOW_SIZE*RESOLUTION/2.0
+
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
-                if self.active_window[i,j,MAG] < THRESH:
-                    pass
-                else:
-                    pass
-                #TODO
-        pass
+                if self.active_window[i,j,MAG] < T_HI:
+                    continue
+                if self._isInRange(self.cita, phi_left, self.active_window[i,j,BETA]):
+                    #left
+                    r_robl_x = steer_l*np.cos(np.radians(self.cita+90.0))
+                    r_robl_y = steer_l*np.sin(np.radians(self.cita+90.0))
+
+                    # center of the steering radius in the active window
+                    r_steer_x = X_r + r_robl_x
+                    r_steer_y = Y_r + r_robl_y
+
+                    # position of the cell
+                    cij_x = i*RESOLUTION
+                    cij_y = j*RESOLUTION
+
+                    # distance^2 from the cell to the steering center
+                    c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
+
+                    if c_dist2 < np.square(R_RS + steer_l):
+                        phi_left = self.active_window[i,j,BETA]
+
+                elif self._isInRange(phi_right,self.cita,self.active_window[i,j,BETA]):
+                    #right
+                    r_robr_x = steer_r*np.cos(np.radians(self.cita-90.0))
+                    r_robr_y = steer_r*np.sin(np.radians(self.cita-90.0))
+
+                    # center of the steering radius in the active window
+                    r_steer_x = X_r + r_robr_x
+                    r_steer_y = Y_r + r_robr_y
+
+                    # position of the cell
+                    cij_x = i*RESOLUTION
+                    cij_y = j*RESOLUTION
+
+                    # distance^2 from the cell to the steering center
+                    c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
+
+                    if c_dist2 < np.square(R_RS + steer_r):
+                        phi_right = self.active_window[i,j,BETA]
+
+
+        for k in xrange(HIST_SIZE):
+            if self.bin_polar_hist[k] == False and self._isInRange(phi_right,phi_left,k*ALPHA):
+                self.masked_polar_hist[k] = False
+            else:
+                self.masked_polar_hist = True
+
+    # This function determines if an angle in the range
+    # [0, 360[ is inside the sector given, from start to
+    # end (counter-clockwise), also angles in the range [0, 360[
+    @staticmethod
+    def _isInRange(start,end,angle):
+        if start < end:
+            return (start <= angle && angle <= end)
+        else:
+            return (start <= angle && angle <= 360) || (0 <= angle && angle <= end)
+
 
     def find_valleys(self):
         start = None
         for x in xrange(HIST_SIZE):
-            if self.filt_polar_hist[x] > THRESH:
+            if self.masked_polar_hist[x]:
                 start = x
                 break
 
@@ -239,103 +317,87 @@ class VFHModel:
             return -1
 
         # Else, look for valleys after 'start'
+        # True means blocked in the masked histogram
+        # False means free
         self.valleys = []
         valley_found = False
         for i in xrange(HIST_SIZE+1):
             index = (start + i)%HIST_SIZE
             if not valley_found:
-                if self.filt_polar_hist[index] < THRESH:
+                if not self.masked_polar_hist[index]:
                     v_start = index
                     valley_found = True
 
             else:
-                if self.filt_polar_hist[index] > THRESH:
+                if self.masked_polar_hist[index]:
                     self.valleys.append(tuple([v_start, index-1]))
                     valley_found = False
         return 0
 
     def calculate_steering_dir(self):
 
-        # First we determine which valley is closest to the
-        # current robot orientation
-        closest_dist = None
-        closest_valley = None
-        closest_sect = None
-
         if len(self.valleys) == 0:
             raise Exception("No candidate valleys found to calculate a new direction")
 
+        candidate_dirs = []
         for v in self.valleys:
+            s1, s2 = v
+            v_size = (s2 - s1) if s2 >= s1 else HIST_SIZE - (s1-s2)
 
-            d1, d2 = [self._dist(self.filt_polar_hist, self.k_0, sector) for sector in v]
-
-            if closest_dist != None:
-                min_dist = min(d1, d2)
-                if min_dist < closest_dist:
-                    closest_dist = min_dist
-                    closest_valley = v
-                    if d1 < d2:
-                        closest_sect = 0
-                    else:
-                        closest_sect = 1
+            if v_size < WIDE_V:
+                # Narrow valley
+                # The only target dir is the middle of 
+                # the oppening
+                c_center = ALPHA*(s1 + v_size/2.0)
+                c_center = c_center - 360.0 if c_center >= 360.0 else c_center
+                candidate_dirs.append(c_center)
 
             else:
-                closest_dist = min(d1, d2)
-                closest_valley = v
-                if d1 < d2:
-                    closest_sect = 0
-                else:
-                    closest_sect = 1
+                # Wide valley
+                # Target dirs are the left and right
+                # borders,
+                c_right = ALPHA*(s1 + WIDE_V/2.0)
+                c_right = c_right - 360.0 if c_right >= 360.0 else c_right
 
-        print "Closest valley is %s" % str(closest_valley)
-        s1, s2 = closest_valley
-        v_size = (s2 - s1) if s2 >= s1 else HIST_SIZE - (s1-s2)
+                c_left = ALPHA*(s2 - WIDE_V/2.0)
+                c_left = c_left + 360.0 if c_left < 0.0 else c_left
 
-        if v_size < WIDE_V :
-            # For narrow valleys move in the direction of the middle of
-            # the valley.
-            print "Crossing a narrow valley"
-            new_dir = ALPHA * (s1 + v_size/2.0)
-        else:
-            print "Crossing a wide valley"
+                candidate_dirs.append(c_left)
+                candidate_dirs.append(c_right)
 
-            # For wide valleys move in the direction of travel if
-            # the closest distance is bigger than WIDE_V/2 and its
-            # inside the valley
-            if closest_dist > WIDE_V/2.0:
-                k_inside = False
-                if s1 < s2:
-                    k_inside = s1 < self.k_0 and self.k_0 < s2
-                else:
-                    k_inside = not (s2 < self.k_0 and self.k_0 < s1)
+                if _isInRange(c_right,c_left,self.t_dir):
+                    candidate_dirs.append(self.t_dir)
 
-                if k_inside:
-                    print "Maintining current direction"
-                    new_dir = ALPHA * self.k_0
-                else:
-                    print "Current direction is blocked!"
+        # Once all we know all possible candidate dirs
+        # choose the one with the lowest cost
+        new_dir = None
+        best_cost = None
+        for c in candidate_dirs:
+            cost = mu1*_abs_angle_diff(c,self.t_dir) + \
+                    mu2*_abs_angle_diff(c,self.cita) + \
+                    mu3*_abs_angle_diff(c,self.prev_dir)
 
-            # If the target is closer to the edge then travel near
-            # the closer edge of the valley
-            elif closest_sect == 0:
-                print "Staying near right"
-                new_dir = ALPHA * (s1 + WIDE_V/2.0)
-            else:
-                print "Staying near left"
-                new_dir = ALPHA * (s2 - WIDE_V/2.0)
+            if best_cost == None:
+                new_dir = c
+                best_cost = cost
+            elif cost < best_cost:
+                new_dir = c
+                best_cost = cost
 
-        if new_dir >= 360:
-            new_dir = new_dir - 360
-        elif new_dir < 0:
-            new_dir = new_dir + 360
+        self.prev_dir = new_dir
+
         return new_dir
+
+    @staticmethod
+    def _abs_angle_diff(self,a1, a2):
+        return min(360.0 - abs(a1 - a2), abs(a1 - a2))
 
     def calculate_speed(self, omega=0):
 
         # Omega in [rad/s]
         # Obstacle density in the current direction of travel
         H_M = 40000.0
-        h_cp = self.filt_polar_hist[self.k_0]
+        h_cp = self.polar_hist[self.k_0]
         h_cpp = min(h_cp, H_M)
 
         V_prime = V_MAX*(1 - h_cpp/H_M)
