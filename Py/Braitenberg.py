@@ -3,15 +3,19 @@
 import math
 import numpy as np
 
-ALPHA = np.pi/6.0
+
+SMODE_MIN = 0
+SMODE_AVG = 1
+SMODE_FULL = 2
 
 class BraitModel(object): 
-    def __init__(self, d_min=0.01, d_max=0.1, v_min=-math.pi, v_max=math.pi):
+    def __init__(self, s_mode=0, d_min=0.01, d_max=0.1, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):
         
         self.x = 0.
         self.y = 0.
-        self.cita = 0.
+        self.gamma = 0.
 
+        self.alpha = alpha
         # Distancia minima y maxima de vision
         # del algoritmo
         self.D_MIN = d_min
@@ -19,21 +23,66 @@ class BraitModel(object):
 
         self.V_MIN = v_min
         self.V_MAX = v_max
+        self.W_MAX = w_max
 
-        self.sensor_l = 0.0
-        self.sensor_r = 0.0
+        self.sensor_l = d_max
+        self.sensor_r = d_max
+        self.s_mode = s_mode
 
-    def Evade2b(self, d_left, d_right):
-        v_left = MapStimulus(d_right, self.D_MIN, self.D_MAX, self.V_MIN, self.V_MAX)
-        v_right = MapStimulus(d_left, self.D_MIN, self.D_MAX, self.V_MIN, self.V_MAX)
-        return v_left, v_right
+        self.target = None
+
+    def Evade2b(self, d_left=None, d_right=None):
+
+        # Defaults to the object instance's sensor stimuli
+        # this behaviour can be overriden by providing the
+        # distances values as parameters.
+        if d_left == None:
+            d_left = self.sensor_l
+        if d_right == None:
+            d_right = self.sensor_r
             
-    def Evade3a(self, d_left, d_right):
+        v_left = MapStimulus(d_right, self.D_MIN, self.D_MAX, 0,0.0, 1.0)
+        v_right = MapStimulus(d_left, self.D_MIN, self.D_MAX, 0.0, 1.0)
+        v_norm = (v_right + v_left)/2.0
+        w_norm = (v_right - v_left)/2.0
+
+        v_rob = MapStimulus(v_norm, 0.0, 1.0, self.V_MIN, self.V_MAX)
+        w_rob = MapStimulus(v_norm, -0.5, 0.5, -self.W_MAX, self.W_MAX)
+        #return v_left, v_right
+        return v_rob, w_rob
+            
+    def Evade3a(self, d_left=None, d_right=None):
+
+        # Defaults to the object instance's sensor stimuli
+        # this behaviour can be overriden by providing the
+        # distances values as parameters.
+        if d_left == None:
+            d_left = self.sensor_l
+        if d_right == None:
+            d_right = self.sensor_r
+
         v_left = MapStimulus(d_left, self.D_MIN, self.D_MAX, self.V_MAX, self.V_MIN)
         v_right = MapStimulus(d_right, self.D_MIN, self.D_MAX, self.V_MAX, self.V_MIN)
         return v_left, v_right
 
-    def update_sensors(self, sensor_readings):
+    def Mixed2b3a(self, d_left, d_right):
+        pass
+
+    def Mixed3a2b(self, d_left, d_right):
+        pass
+
+    def UpdatePos(self, x, y, gamma):
+        self.x = x
+        self.y = y
+        self.gamma = gamma
+
+    def SetTarget(self, x, y, unset = False):
+        if unset:
+            self.target = None
+        else:
+            self.target = tuple(x,y)
+
+    def UpdateSensors(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
         # r in meters, theta in radians
         # 0,0 means no reading
@@ -49,13 +98,45 @@ class BraitModel(object):
             r, theta = sensor_readings[x,:]
             if r == 0 and theta == 0:
                 continue
-            if -ALPHA < theta && theta < 0:
-                # left
-                pass
+            if -self.alpha < theta and theta < 0:
+                # right
+                right.append(r)
+            elif 0 < theta and theta < self.alpha:
+                left.append(r)
+                #left
 
-            elif 0 < theta < ALPHA:
-                #right
-                pass
+        if self.s_mode == SMODE_MIN:
+            self.sensor_l = min(left)
+            self.sensor_r = min(right)
+
+        elif self.s_mode == SMODE_AVG:
+            if len(left) == 0:
+                self.sensor_l = self.D_MAX
+            else:
+                self.sensor_l = sum(left)/float(len(left))
+
+            if len(right) == 0:
+                self.sensor_r = self.D_MAX
+            else:
+                self.sensor_r = sum(right)/float(len(right))
+
+        elif self.s_mode == SMODE_FULL:
+            num = 15
+
+            sum_l = sum(left)
+            if len(left) < num:
+                sum_l += (num-len(left))*self.D_MAX
+                self.sensor_l = sum_l/num
+            else:
+                self.sensor_l = sum_l/len(left)
+
+            sum_r = sum(right)
+            if len(right) < num:
+                sum_r += (num-len(right))*self.D_MAX
+                self.sensor_r = sum_r/num
+            else:
+                self.sensor_r = sum_r/len(right)
+
 
 def MapStimulus(s, s_min, s_max, r_min, r_max):
     if s >= s_max:
