@@ -90,6 +90,26 @@ class DiffRobot(object):
     def set_initial_pos_VFHP(self, x, y, cita):
         pass
 
+    def set_target(self, x, y):
+        if self.c_type == M_VFH:
+            self.model.set_target(x,y)
+        elif self.c_type == M_BRAIT:
+            self.model.SetTarget(x,y)
+        elif self.c_type == M_VFHP:
+            self.model.set_target(x,y)
+        else:
+            print "ERROR: no control type defined!"
+
+    def unset_target(self):
+        if self.c_type == M_VFH:
+            self.model.set_target()
+        elif self.c_type == M_BRAIT:
+            self.model.SetTarget()
+        elif self.c_type == M_VFHP:
+            self.model.set_target()
+        else:
+            print "ERROR: no control type defined!"
+
     def update_pos(self, x, y, cita, delta_t):
         
         if self.c_type == M_VFH:

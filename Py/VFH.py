@@ -104,6 +104,10 @@ class VFHModel:
         # Sector of the robot
         self.k_0 = 0
 
+        # (x,y) pair representing the target, or
+        # None if there is no target
+        self.target = None
+
     def update_position(self, x, y, cita):
         self.x_0 = x
         self.y_0 = y
@@ -112,6 +116,18 @@ class VFHModel:
         self.i_0 = int(x / RESOLUTION)
         self.j_0 = int(y / RESOLUTION)
         self.k_0 = int(self.cita / ALPHA)%HIST_SIZE
+
+    def set_target(self, x=None, y=None):
+        if x != None and y != None:
+            if x >= 0 and y >= 0 and \
+                    x < GRID_SIZE*RESOLUTION and \
+                    y < GRID_SIZE*RESOLUTION:
+                self.target = (x,y)
+                return 1
+            return 0
+        else:
+            self.target = None
+            return 2
 
     def update_obstacle_density(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
@@ -215,18 +231,32 @@ class VFHModel:
 
     def calculate_steering_dir(self):
 
+        # Set the target sector. If there is a target point
+        # calculate the sector from that, else it's the 
+        # current orientation
+        k_t = None
+        if self.target == None:
+            k_t = self.k_0
+        else:
+            dx = self.target[0] - self.x_0
+            dy = self.target[1] - self.y_0
+            angle = np.degrees(np.arctan2(dy, dx))
+            angle = angle + 360 if angle < 0 else angle
+            k_t = int(angle / ALPHA)%HIST_SIZE
+
         # First we determine which valley is closest to the
-        # current robot orientation
+        # target or current robot orientation
         closest_dist = None
         closest_valley = None
         closest_sect = None
+
 
         if len(self.valleys) == 0:
             raise Exception("No candidate valleys found to calculate a new direction")
 
         for v in self.valleys:
 
-            d1, d2 = [self._dist(self.filt_polar_hist, self.k_0, sector) for sector in v]
+            d1, d2 = [self._dist(self.filt_polar_hist, k_t, sector) for sector in v]
 
             if closest_dist != None:
                 min_dist = min(d1, d2)
@@ -264,13 +294,13 @@ class VFHModel:
             if closest_dist > WIDE_V/2.0:
                 k_inside = False
                 if s1 < s2:
-                    k_inside = s1 < self.k_0 and self.k_0 < s2
+                    k_inside = s1 < k_t and k_t < s2
                 else:
-                    k_inside = not (s2 < self.k_0 and self.k_0 < s1)
+                    k_inside = not (s2 < k_t and k_t < s1)
 
                 if k_inside:
                     print "Maintining current direction"
-                    new_dir = ALPHA * self.k_0
+                    new_dir = ALPHA * k_t
                 else:
                     print "Current direction is blocked!"
 
