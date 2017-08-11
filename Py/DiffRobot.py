@@ -38,7 +38,7 @@ class DiffRobot(object):
             self.model = VFH.VFHModel()
         elif c_type == M_BRAIT:
             print "Using Braitenber algorithm"
-            self.model = bra.BraitModel(bra.SMODE_MIN, 0.05, 0.3, -self.v_max, self.v_max, self.omega_max)
+            self.model = bra.BraitModel(bra.SMODE_MIN, 0.05, 0.3, -self.v_max*0.1, self.v_max, self.omega_max)
         elif c_type == M_VFHP:
             print "Using VFH+ algorithm"
             self.model = VFHP.VFHPModel()
@@ -104,7 +104,7 @@ class DiffRobot(object):
         if self.c_type == M_VFH:
             self.model.set_target()
         elif self.c_type == M_BRAIT:
-            self.model.SetTarget()
+            self.model.SetTarget(0,0,True)
         elif self.c_type == M_VFHP:
             self.model.set_target()
         else:
@@ -195,7 +195,8 @@ class DiffRobot(object):
         self.setMotorSpeed()
 
     def update_target_Brait(self):
-        v, w = self.model.Evade2b()
+        #v, w = self.model.Evade2b()
+        v, w = self.model.Mixed2b3a()
         self.v_ref = v
         self.w_ref = w
         self.setMotorSpeed()

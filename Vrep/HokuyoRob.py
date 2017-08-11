@@ -96,7 +96,8 @@ def runSim(argc, argv):
         
         #robot = vfh.VFHModel()
         print "Iniciando el robot!"
-        modo = DR.M_VFH
+        #modo = DR.M_VFH
+        modo = DR.M_BRAIT
         robot = DR.DiffRobot(c_type=modo)
         robot.set_target(2.6,3.1)
 
@@ -180,8 +181,8 @@ def runSim(argc, argv):
                 #print oriData
                 print "current pos: %f, %f, %f" % (x, y, gama)
 
-                print "Acording to robot: %f, %f, %f" % (robot.model.x_0, robot.model.y_0, robot.model.cita)
-                #print "Acording to robot: %f, %f, %f" % (robot.model.x, robot.model.y, robot.model.gamma)
+                #print "Acording to robot: %f, %f, %f" % (robot.model.x_0, robot.model.y_0, robot.model.cita)
+                print "Acording to robot: %f, %f, %f" % (robot.model.x, robot.model.y, robot.model.gamma)
 
             ## Process Laser Sensor ##
             if laserReturnCode == vrep.simx_return_ok:

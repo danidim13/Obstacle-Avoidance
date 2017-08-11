@@ -14,6 +14,7 @@ class BraitModel(object):
         self.x = 0.
         self.y = 0.
         self.gamma = 0.
+        self.radius = 0.02
 
         self.alpha = alpha
         # Distancia minima y maxima de vision
@@ -81,7 +82,70 @@ class BraitModel(object):
         #return v_left, v_right
         return v_rob, w_rob
 
-    def Mixed2b3a(self, d_left, d_right):
+    def Mixed2b3a(self, d_left=None, d_right=None):
+        
+        ### Target following logic
+
+        left_x  = self.x + np.cos(self.gamma+np.pi/2)*self.radius
+        left_y  = self.y + np.sin(self.gamma+np.pi/2)*self.radius
+        right_x = self.x + np.cos(self.gamma-np.pi/2)*self.radius
+        right_y = self.y + np.sin(self.gamma-np.pi/2)*self.radius
+
+        print "left is (%.3f, %.3f)" % (left_x, left_y)
+        print "right is (%.3f, %.3f)" % (right_x, right_y)
+        
+        left_d2  = np.sqrt(np.square(self.target[0]-left_x)  + np.square(self.target[1]-left_y))
+        right_d2 = np.sqrt(np.square(self.target[0]-right_x) + np.square(self.target[1]-right_y))
+        print "left = %.2f, right = %2f" % (left_d2, right_d2)
+
+        thresh = (self.radius*2)
+        if left_d2 > thresh  or right_d2 > thresh:
+            d_extra = max(left_d2,right_d2) - thresh
+
+            print "left = %.2f, right = %2f, t=%.2f" % (left_d2, right_d2, thresh)
+            left_d2 = left_d2 - d_extra
+            right_d2 = right_d2 - d_extra
+            print "Triming distance by %.2f" % d_extra
+
+        left_s  = (self.radius)/left_d2
+        right_s = (self.radius)/right_d2
+
+        close_min = 0.1
+        close_max = 1.0
+
+        v_left1 = MapStimulus(left_s, close_min, close_max, 1.0, 0.0)
+        v_right1 = MapStimulus(right_s, close_min, close_max, 1.0, 0.0)
+        print "v_left1 = %.3f" % v_left1
+        print "v_right1 = %.3f" % v_right1
+
+        ### Obstacle avoidance logic
+
+        if d_left == None:
+            d_left = self.sensor_l
+        if d_right == None:
+            d_right = self.sensor_r
+            
+        v_left2 = MapStimulus(d_right, self.D_MIN, self.D_MAX, 0.0, 1.0)
+        v_right2 = MapStimulus(d_left, self.D_MIN, self.D_MAX, 0.0, 1.0)
+
+        ratio = 0.2
+        v_left = (v_left1*ratio + v_left2*(1-ratio))/2
+        v_right = (v_right1*ratio + v_right2*(1-ratio))/2
+        print "v_left = %.3f" % v_left
+        print "v_right = %.3f" % v_right
+
+        v_norm = (v_right + v_left)/2.0
+        w_norm = (v_right - v_left)/2.0
+
+        #print "v_norm = %.3f" % v_norm
+        #print "w_norm = %.3f" % w_norm
+
+        v_rob = MapStimulus(v_norm, 0.0, 1.0, self.V_MIN, self.V_MAX)
+        w_rob = MapStimulus(w_norm, -0.5, 0.5, -self.W_MAX, self.W_MAX)
+
+        #return v_left, v_right
+        return v_rob, w_rob
+        
         pass
 
     def Mixed3a2b(self, d_left, d_right):
@@ -96,7 +160,7 @@ class BraitModel(object):
         if unset:
             self.target = None
         else:
-            self.target = tuple(x,y)
+            self.target = (x,y)
 
     def UpdateSensors(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
@@ -175,15 +239,17 @@ def MapStimulus(s, s_min, s_max, r_min, r_max):
 def main():
 
     robot = BraitModel(s_mode=SMODE_FULL)
-    pseudo_readings = np.float_([[0.11, np.radians(x)] for x in range(-5,90,1)])
+    pseudo_readings = np.float_([[0.41, np.radians(x)] for x in range(-5,90,1)])
     robot.UpdateSensors(pseudo_readings)
+    robot.UpdatePos(0.0,0.0,np.pi/2)
+    robot.SetTarget(0.0000, 0.20)
     print "Left sensor reading %.2f" % robot.sensor_l
     print "Right sensor reading %.2f" % robot.sensor_r
 
     print
     print "Speed range: [%.2f, %.2f]" % (robot.V_MIN, robot.V_MAX)
     print "Rotation range: [%.2f, %.2f]" % (-robot.W_MAX, robot.W_MAX)
-    v, w = robot.Evade2b()
+    v, w = robot.Mixed2b3a()
     dire = "izq" if w > 0 else "der"
     print "Result: v=%.2f , w=%.2f (%s)" % (v, w, dire)
 
