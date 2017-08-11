@@ -70,7 +70,7 @@ GAMA = 4
 ###                                 ####
 ########################################
 
-class VFHModel:
+class VFHPModel:
 
     def __init__(self):
 
@@ -299,9 +299,9 @@ class VFHModel:
     @staticmethod
     def _isInRange(start,end,angle):
         if start < end:
-            return (start <= angle && angle <= end)
+            return (start <= angle and angle <= end)
         else:
-            return (start <= angle && angle <= 360) || (0 <= angle && angle <= end)
+            return (start <= angle and angle <= 360) or (0 <= angle and angle <= end)
 
 
     def find_valleys(self):
