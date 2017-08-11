@@ -344,8 +344,20 @@ def main():
     print robot._active_grid(), "\n"
 
     print "Simulating a set of sensor readings"
-    pseudo_readings = np.float_([[0.2, np.radians(x)] for x in range(0,90,2)])
+    pseudo_readings = np.float_([[0.3, np.radians(x)] for x in range(0,90,1)])
     robot.update_obstacle_density(pseudo_readings)
+    robot.update_obstacle_density(pseudo_readings)
+    #print int(1.2/RESOLUTION), int(1.3/RESOLUTION)
+    robot.obstacle_grid[23, 26] = 20
+    robot.obstacle_grid[23, 27] = 20
+    robot.obstacle_grid[24, 26] = 20
+    robot.obstacle_grid[24, 27] = 20
+    robot.obstacle_grid[24, 25] = 17
+    robot.obstacle_grid[23, 25] = 16
+    robot.obstacle_grid[25, 24] = 10
+    robot.obstacle_grid[24, 24] = 8
+
+    #robot.obstacle_grid[30, 30] = -20
 
     print "Updating the active window"
     robot.update_active_window()
@@ -374,17 +386,18 @@ def main():
     plt.figure(1)
     x = [ALPHA*x for x in range(len(robot.filt_polar_hist))]
     i = [a for a in range(len(robot.filt_polar_hist))]
-    plt.bar(x, robot.polar_hist, 8.0, 0, color='r')
+    plt.bar(x, robot.polar_hist, 4.0, 0, color='r')
     plt.title("Histograma polar")
 
     plt.figure(2)
-    plt.plot(i, robot.filt_polar_hist ) #, 0.1, 0, color='b')
+    plt.bar(x, robot.filt_polar_hist, 4.0 ) #, 0.1, 0, color='b')
     plt.title("Histograma polar filtrado")
 
     plt.figure(3)
     plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
     plt.xlabel("X")
     plt.ylabel("Y", rotation='horizontal')
+    plt.title("Ventana activa")
     
     plt.show()
 
