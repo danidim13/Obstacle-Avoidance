@@ -96,7 +96,8 @@ def runSim(argc, argv):
         
         #robot = vfh.VFHModel()
         print "Iniciando el robot!"
-        robot = DR.DiffRobot()
+        modo = DR.M_BRAIT
+        robot = DR.DiffRobot(c_type=modo)
 
         X_TRAS = 2.5
         Y_TRAS = 2.5
@@ -177,7 +178,8 @@ def runSim(argc, argv):
                 #print posData
                 #print oriData
                 print "current pos: %f, %f, %f" % (x, y, gama)
-                print "Acording to robot: %f, %f, %f" % (robot.model.x_0, robot.model.y_0, robot.model.cita)
+                #print "Acording to robot: %f, %f, %f" % (robot.model.x_0, robot.model.y_0, robot.model.cita)
+                print "Acording to robot: %f, %f, %f" % (robot.model.x, robot.model.y, robot.model.gamma)
 
             ## Process Laser Sensor ##
             if laserReturnCode == vrep.simx_return_ok:
@@ -215,7 +217,9 @@ def runSim(argc, argv):
                 print "ERROR: failed to read Laser Signal"
 
             ## Main control logic for VFH
-            if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok and laserReturnCode == vrep.simx_return_ok:
+            if posReturnCode == vrep.simx_return_ok and \
+                    oriReturnCode == vrep.simx_return_ok and \
+                    laserReturnCode == vrep.simx_return_ok:
                 robot.update_target()
 
 
@@ -252,41 +256,45 @@ def runSim(argc, argv):
 
         print "\nEnd of Simulation"
 
-        print "\nRobot position and orientation"
-        print robot.model.x_0, robot.model.y_0, robot.model.cita
+        if robot.c_type == DR.M_VFH:
+            print "\nRobot position and orientation"
+            print robot.model.x_0, robot.model.y_0, robot.model.cita
 
-        print "\nRobot i, j, k"
-        print robot.model.i_0, robot.model.j_0, robot.model.k_0
+            print "\nRobot i, j, k"
+            print robot.model.i_0, robot.model.j_0, robot.model.k_0
 
-        print "\nRobot active grid"
-        print robot.model._active_grid()
+            print "\nRobot active grid"
+            print robot.model._active_grid()
 
-        print "\nRobot polar histogram"
-        print robot.model.polar_hist
+            print "\nRobot polar histogram"
+            print robot.model.polar_hist
 
-        print "\nRobot filtered histogram"
-        print robot.model.filt_polar_hist
+            print "\nRobot filtered histogram"
+            print robot.model.filt_polar_hist
 
-        print "\nValleys"
-        print robot.model.valleys
-        sys.stdout.flush()
+            print "\nValleys"
+            print robot.model.valleys
+            sys.stdout.flush()
 
-        # Figuras y graficos
-        plt.figure(1)
-        x = [vfh.ALPHA*x for x in range(len(robot.model.filt_polar_hist))]
-        i = [a for a in range(len(robot.model.filt_polar_hist))]
-        plt.bar(x, robot.model.polar_hist, 8.0, 0, color='r')
-        plt.title("Histograma polar")
+            # Figuras y graficos
+            plt.figure(1)
+            x = [vfh.ALPHA*x for x in range(len(robot.model.filt_polar_hist))]
+            i = [a for a in range(len(robot.model.filt_polar_hist))]
+            plt.bar(x, robot.model.polar_hist, 8.0, 0, color='r')
+            plt.title("Histograma polar")
 
-        plt.figure(2)
-        plt.bar(i, robot.model.filt_polar_hist, 0.1, 0, color='b')
-        plt.title("Histograma polar filtrado")
+            plt.figure(2)
+            plt.bar(i, robot.model.filt_polar_hist, 0.1, 0, color='b')
+            plt.title("Histograma polar filtrado")
 
-        plt.figure(3)
-        plt.pcolor(robot.model._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
-        plt.xlabel("X")
-        plt.ylabel("Y", rotation='horizontal')
-        plt.show()
+            plt.figure(3)
+            plt.pcolor(robot.model._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+            plt.xlabel("X")
+            plt.ylabel("Y", rotation='horizontal')
+            plt.show()
+
+        if robot.c_type == DR.M_BRAIT:
+            print "BraitRob end!"
 
     return 0
 

@@ -2,11 +2,15 @@ import sys
 import numpy as np
 import PID
 import VFH
-import Braitenberg as Brait
+import VFHP
+import Braitenberg as bra
 
 TARGET_X = 2.5
 TARGET_Y = 3.5
 
+M_VFH = 0
+M_BRAIT = 1
+M_VFHP = 2
 
 # Robot differencial
 class DiffRobot(object):
@@ -26,13 +30,18 @@ class DiffRobot(object):
 
         self.model = None
         self.c_type = c_type
-        if c_type == 0:
+        if c_type == M_VFH:
+            print "Using VFH algorithm"
             VFH.OMEGA_MAX = self.omega_max
             VFH.V_MAX = self.v_max
             VFH.V_MIN = self.v_max*0.2
             self.model = VFH.VFHModel()
-        elif c_type == 1:
-            self.model = Brait.BraitModel(0.05, 0.2, -self.v_max, self.v_max)
+        elif c_type == M_BRAIT:
+            print "Using Braitenber algorithm"
+            self.model = bra.BraitModel(bra.SMODE_MIN, 0.05, 0.3, -self.v_max, self.v_max, self.omega_max)
+        elif c_type == M_VFHP:
+            print "Using VFH+ algorithm"
+            self.model = VFHP.VFHPModel()
 
 
         # Valores deseados de velocidad, velocidad angular y
@@ -56,6 +65,18 @@ class DiffRobot(object):
 
     # Todas las mediciones se dan en el sistema metrico [m, rad]
     def set_initial_pos(self, x, y, cita):
+        
+        if self.c_type == M_VFH:
+            self.set_initial_pos_VFH(x,y,cita)
+        elif self.c_type == M_BRAIT:
+            self.set_initial_pos_Brait(x,y,cita)
+        elif self.c_type == M_VFHP:
+            self.set_initial_pos_VFHP(x,y,cita)
+        else:
+            print "ERROR: no control type defined!"
+
+
+    def set_initial_pos_VFH(self, x, y, cita):
         self.cita = cita
         self.cita_prev = cita
         self.w_prev = 0.0
@@ -63,7 +84,24 @@ class DiffRobot(object):
         self.angle_controller.setInput(cita)
         self.angle_controller.setRef(cita)
 
+    def set_initial_pos_Brait(self, x, y, cita):
+        self.model.UpdatePos(x, y, cita)
+        
+    def set_initial_pos_VFHP(self, x, y, cita):
+        pass
+
     def update_pos(self, x, y, cita, delta_t):
+        
+        if self.c_type == M_VFH:
+            self.update_pos_VFH(x,y,cita,delta_t)
+        elif self.c_type == M_BRAIT:
+            self.update_pos_Brait(x,y,cita,delta_t)
+        elif self.c_type == M_VFHP:
+            self.update_pos_VFHP(x,y,cita,delta_t)
+        else:
+            print "ERROR: no control type defined!"
+
+    def update_pos_VFH(self, x, y, cita, delta_t):
 
         self.cita_prev = self.cita
         self.cita = cita
@@ -75,14 +113,46 @@ class DiffRobot(object):
         self.w_ref = self.angle_controller.timestep(delta_t)
         print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
+    def update_pos_Brait(self, x, y, cita, delta_t):
+        self.model.UpdatePos(x, y, cita)
+
+    def update_pos_VFHP(self, x, y, cita, delta_t):
+        pass
+
     def update_readings(self, data):
+        if self.c_type == M_VFH:
+            self.update_readings_VFH(data)
+        elif self.c_type == M_BRAIT:
+            self.update_readings_Brait(data)
+        elif self.c_type == M_VFHP:
+            self.update_readings_VFHP(data)
+        else:
+            print "ERROR: no control type defined!"
+
+    def update_readings_VFH(self, data):
         try:
             self.model.update_obstacle_density(data)
         except Exception as e:
             print "Exception caught during sensor update:"
             print e
 
+    def update_readings_Brait(self, data):
+        self.model.UpdateSensors(data)
+
+    def update_readings_VFHP(self, data):
+        pass
+
     def update_target(self):
+        if self.c_type == M_VFH:
+            self.update_target_VFH()
+        elif self.c_type == M_BRAIT:
+            self.update_target_Brait()
+        elif self.c_type == M_VFHP:
+            self.update_target_VFHP()
+        else:
+            print "ERROR: no control type defined!"
+
+    def update_target_VFH(self):
         self.model.update_active_window()
         self.model.update_polar_histogram()
         self.model.update_filtered_polar_histogram()
@@ -102,6 +172,12 @@ class DiffRobot(object):
         # Se actualiza el valor deseado de orientacion
         # en el controlador
         self.angle_controller.setRef(self.cita_ref)
+        self.setMotorSpeed()
+
+    def update_target_Brait(self):
+        v, w = self.model.Evade2b()
+        self.v_ref = v
+        self.w_ref = w
         self.setMotorSpeed()
 
     def setMotorSpeed(self):
