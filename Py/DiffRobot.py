@@ -37,8 +37,8 @@ class DiffRobot(object):
             VFH.V_MIN = self.v_max*0.2
             self.model = VFH.VFHModel()
         elif c_type == M_BRAIT:
-            print "Using Braitenber algorithm"
-            self.model = bra.BraitModel(bra.SMODE_MIN, 0.05, 0.3, -self.v_max*0.1, self.v_max, self.omega_max)
+            print "Using Braitenberg algorithm"
+            self.model = bra.BraitModel(bra.SMODE_FULL, 0.05, 0.3, -self.v_max*0.1, self.v_max, self.omega_max)
         elif c_type == M_VFHP:
             print "Using VFH+ algorithm"
             self.model = VFHP.VFHPModel()
@@ -178,14 +178,18 @@ class DiffRobot(object):
         self.model.update_filtered_polar_histogram()
 
         if self.model.find_valleys() != -1:
-            self.cita_ref = np.radians(self.model.calculate_steering_dir())
+            try:
+                self.cita_ref = np.radians(self.model.calculate_steering_dir())
+            except Exception as e:
+                print "No valleys found, keeping current dir"
+                self.cita_ref = np.radians(self.model.cita)
+
             self.v_ref = self.model.calculate_speed(self.w_prev)
             print "Obstacle detected! target dir is %f" % self.cita_ref
         else:
-            print "No nearby obstacles"
-            target_dir = np.arctan2(TARGET_Y - self.model.y_0 ,TARGET_X - self.model.x_0)
-            self.cita_ref = target_dir
-            print "Setting target dir at %f" % target_dir
+            print "No nearby obstacles keeping current dir"
+            self.cita_ref = np.radians(self.model.cita)
+            print "Setting target dir at %f" % self.cita_ref
             #self.w_ref = 0.0
             self.v_ref = self.v_max
 

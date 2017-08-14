@@ -110,7 +110,7 @@ class BraitModel(object):
         left_s  = (self.radius)/left_d2
         right_s = (self.radius)/right_d2
 
-        close_min = 0.1
+        close_min = 0.5
         close_max = 1.0
 
         v_left1 = MapStimulus(left_s, close_min, close_max, 1.0, 0.0)

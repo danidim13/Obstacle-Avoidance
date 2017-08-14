@@ -96,14 +96,30 @@ def runSim(argc, argv):
         
         #robot = vfh.VFHModel()
         print "Iniciando el robot!"
-        #modo = DR.M_VFH
-        modo = DR.M_BRAIT
+
+        modo = DR.M_VFH
+        #modo = DR.M_BRAIT
+
+        data_filename = "sim_data_{:d}.csv".format(modo)
+        data_dump = open(data_filename, 'w')
+
+
         robot = DR.DiffRobot(c_type=modo)
-        robot.set_target(2.6,3.1)
+
+        # Pista 1
+        #robot.set_target(2.5,3.0) 
+
+        # Pista 2
+        robot.set_target(2.6,3.1) 
+
+        # Pista 3
+        #robot.set_target(2.75,3.5) 
+
 
         X_TRAS = 2.5
         Y_TRAS = 2.5
         G_TRAS = 0.0
+        target = np.array([2.6-X_TRAS,3.1-Y_TRAS])
         robot.set_initial_pos(X_TRAS, Y_TRAS,0)
 
         simTime = 0.0
@@ -153,44 +169,47 @@ def runSim(argc, argv):
 
             ### Read Sensors ###
 
-            #print "Reading sensors..."
-            #leftReturnCode, leftSensorTrigger, leftData, leftDist = vrep.simxReadProximitySensor(clientID,leftSensorHandle,vrep.simx_opmode_streaming)[0:4]
-            #rightReturnCode, rightSensorTrigger, rightData, rightDist = vrep.simxReadProximitySensor(clientID,rightSensorHandle,vrep.simx_opmode_streaming)[0:4]
-
+            laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_buffer)
             posReturnCode, posSignal = vrep.simxGetStringSignal(clientID, posSignalName, vrep.simx_opmode_buffer)
             oriReturnCode, oriSignal = vrep.simxGetStringSignal(clientID, oriSignalName, vrep.simx_opmode_buffer)
-            laserReturnCode, laserSignal = vrep.simxGetStringSignal(clientID, laserSignalName, vrep.simx_opmode_buffer)
 
             now = vrep.simxGetLastCmdTime(clientID)
-            #print now
             if (now == simTime):
-                "Simulation has not advanced, skipping..."
+                #print "Simulation has not advanced, skipping..."
                 continue
             print "\nSIMTIME ", now
             delta_t = (now - simTime)/100.0
             simTime = now
 
-            # Process position
+            ######################
+            ## Process position ##
             if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
                 print "Pos Signal read"
                 print "Ori Signal read"
                 x, y, z = vrep.simxUnpackFloats(posSignal)
-                alpha, beta, gama = vrep.simxUnpackFloats(oriSignal)
-                robot.update_pos(x + X_TRAS, y + Y_TRAS, gama, delta_t)
+                alpha, beta, gamma = vrep.simxUnpackFloats(oriSignal)
+                robot.update_pos(x + X_TRAS, y + Y_TRAS, gamma, delta_t)
                 #print posData
                 #print oriData
-                print "current pos: %f, %f, %f" % (x, y, gama)
+                print "current pos: %f, %f, %f" % (x, y, gamma)
 
                 #print "Acording to robot: %f, %f, %f" % (robot.model.x_0, robot.model.y_0, robot.model.cita)
-                print "Acording to robot: %f, %f, %f" % (robot.model.x, robot.model.y, robot.model.gamma)
+                #print "Acording to robot: %f, %f, %f" % (robot.model.x, robot.model.y, robot.model.gamma)
+            elif posReturnCode == vrep.simx_return_novalue_flag or oriReturnCode == vrep.simx_return_novalue_flag:
+                print "Pos Signal didn't have a value ready"
+            else:
+                print "ERROR: failed to read Pos Signal"
+            ##                  ##
+            ######################
 
+
+            ##########################
             ## Process Laser Sensor ##
             if laserReturnCode == vrep.simx_return_ok:
                 print "Laser Signal read"
 
                 if laserSignal == prevLaserSignal:
                     print "No new data in Laser Signal, skipping"
-
                 else:
                     prevLaserSignal = laserSignal
                     laserData = vrep.simxUnpackFloats(laserSignal)
@@ -200,64 +219,57 @@ def runSim(argc, argv):
                     total_points = len(laserData)/3
                     laserPoints = np.float_(laserData).reshape((total_points,3))
 
-                    #print "Total %d floats, %d points" % (len(laserData), total_points)
-                    #print laserPoints
-                    #for i in xrange(total_points):
-                    #    if not np.array_equal(laserPoints[i, :], [0, 0, 0]):
-                    #        print laserPoints[i, :]
                     radians = np.arctan2(laserPoints[:,1],laserPoints[:,0])
                     dist = np.sqrt(np.square(laserPoints[:,0]) + np.square(laserPoints[:,1]))
                     new_data = np.vstack((dist,radians)).T
                     robot.update_readings(new_data)
-                    #for i in xrange(new_data.shape[0]):
-                    #    if not np.array_equal(new_data[i,:], [0, 0]):
-                    #        print new_data[i,:]
-
 
             elif laserReturnCode == vrep.simx_return_novalue_flag:
                 print "Laser Signal didn't have a value ready"
             else:
                 print "ERROR: failed to read Laser Signal"
+            ##                      ##
+            ##########################
 
-            ## Main control logic for VFH
+
+            ################################
+            ## Main control logic for VFH ##
             if posReturnCode == vrep.simx_return_ok and \
                     oriReturnCode == vrep.simx_return_ok and \
                     laserReturnCode == vrep.simx_return_ok:
                 robot.update_target()
 
-
-            ## Process Proximity sensors ##
-#            if (leftReturnCode == vrep.simx_return_ok and rightReturnCode == vrep.simx_return_ok):
-#                # We succeeded at reading the proximity sensor
-#                dleft = brait.D_MAX
-#                dright = brait.D_MAX
-#
-#                if (leftSensorTrigger):
-#                    #print "Detected something on the left!"
-#                    #print leftData
-#                    #print leftDist
-#                    dleft = math.sqrt(sum([x**2 for x in leftData]))
-#                if (rightSensorTrigger):
-#                    #print "Detected something on the right!"
-#                    #print rightData
-#                    #print rightDist
-#                    dright = math.sqrt(sum([x**2 for x in rightData]))
-#                vleft, vright = brait.Braitenberg2b(dleft, dright)
-
-            motorSpeeds[0] = robot.left_motor
-            motorSpeeds[1] = robot.right_motor
-
-
             ## Set motor speeds
-            vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, motorSpeeds[0], vrep.simx_opmode_oneshot)
-            vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, motorSpeeds[1], vrep.simx_opmode_oneshot)
+            vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, robot.left_motor, vrep.simx_opmode_oneshot)
+            vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, robot.right_motor, vrep.simx_opmode_oneshot)
+            ##                            ##
+            ################################
+
+            #######################
+            ## Dump data to file ##
+            if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
+                
+                d = np.sqrt(np.square(target[0] - x) + np.square(target[1] - y))
+                csv_line = "{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma,d)
+                data_dump.write(csv_line)
+                if d < 0.005:
+                    print "Robot has reached its target!"
+                    vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0, vrep.simx_opmode_oneshot)
+                    vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0, vrep.simx_opmode_oneshot)
+                    break
+            ##                   ##
+            #######################
+            
+
             time.sleep(0.05)
 
         ### End of Simulation loop ###
         ##############################
+
         vrep.simxFinish(clientID)
 
         print "\nEnd of Simulation"
+        data_dump.close()
 
         if robot.c_type == DR.M_VFH:
             print "\nRobot position and orientation"
@@ -283,11 +295,11 @@ def runSim(argc, argv):
             plt.figure(1)
             x = [vfh.ALPHA*x for x in range(len(robot.model.filt_polar_hist))]
             i = [a for a in range(len(robot.model.filt_polar_hist))]
-            plt.bar(x, robot.model.polar_hist, 8.0, 0, color='r')
+            plt.bar(x, robot.model.polar_hist, 4.0, 0, color='r')
             plt.title("Histograma polar")
 
             plt.figure(2)
-            plt.bar(i, robot.model.filt_polar_hist, 0.1, 0, color='b')
+            plt.bar(x, robot.model.filt_polar_hist, 4.0, 0, color='b')
             plt.title("Histograma polar filtrado")
 
             plt.figure(3)

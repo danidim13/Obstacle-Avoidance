@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 
 ########################################
@@ -205,7 +206,8 @@ class VFHModel:
         start = None
         for x in xrange(HIST_SIZE):
             if self.filt_polar_hist[x] > THRESH:
-                start = x
+                start = copy.copy(x)
+                #print "Found start at {:d}".format(x)
                 break
 
         # If no value was found over the threshold no action
@@ -214,10 +216,12 @@ class VFHModel:
             return -1
 
         # Else, look for valleys after 'start'
+        #print "Looking for valleys after k={:d}, c={:.1f}".format(start, start*ALPHA)
         self.valleys = []
         valley_found = False
         for i in xrange(HIST_SIZE+1):
             index = (start + i)%HIST_SIZE
+            #print "Sector {:d}, h={:.2f}".format(index, self.filt_polar_hist[index])
             if not valley_found:
                 if self.filt_polar_hist[index] < THRESH:
                     v_start = index
@@ -242,6 +246,7 @@ class VFHModel:
             dy = self.target[1] - self.y_0
             angle = np.degrees(np.arctan2(dy, dx))
             angle = angle + 360 if angle < 0 else angle
+            print "target dir is %.1f" % angle
             k_t = int(angle / ALPHA)%HIST_SIZE
 
         # First we determine which valley is closest to the
@@ -317,13 +322,15 @@ class VFHModel:
             new_dir = new_dir - 360
         elif new_dir < 0:
             new_dir = new_dir + 360
+
+        print "Setting course to target at %.2f" % new_dir
         return new_dir
 
     def calculate_speed(self, omega=0):
 
         # Omega in [rad/s]
         # Obstacle density in the current direction of travel
-        H_M = 40000.0
+        H_M = THRESH*1.8
         h_cp = self.filt_polar_hist[self.k_0]
         h_cpp = min(h_cp, H_M)
 
