@@ -110,7 +110,7 @@ def runSim(argc, argv):
         #robot.set_target(2.5,3.0) 
 
         # Pista 2
-        robot.set_target(2.6,3.1) 
+        #robot.set_target(2.6,3.1) 
 
         # Pista 3
         #robot.set_target(2.75,3.5) 
@@ -119,7 +119,8 @@ def runSim(argc, argv):
         X_TRAS = 2.5
         Y_TRAS = 2.5
         G_TRAS = 0.0
-        target = np.array([2.6-X_TRAS,3.1-Y_TRAS])
+        #target = np.array([2.6-X_TRAS,3.1-Y_TRAS])
+        target = None
         robot.set_initial_pos(X_TRAS, Y_TRAS,0)
 
         simTime = 0.0
@@ -249,14 +250,24 @@ def runSim(argc, argv):
             ## Dump data to file ##
             if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
                 
-                d = np.sqrt(np.square(target[0] - x) + np.square(target[1] - y))
-                csv_line = "{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma,d)
-                data_dump.write(csv_line)
-                if d < 0.005:
-                    print "Robot has reached its target!"
-                    vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0, vrep.simx_opmode_oneshot)
-                    vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0, vrep.simx_opmode_oneshot)
-                    break
+                if target == None:
+                    pass
+                    csv_line = "{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma)
+                    data_dump.write(csv_line)
+                    if now >= 5000:
+                        print "Robot has run for 10 seconds!"
+                        vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0, vrep.simx_opmode_oneshot)
+                        vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0, vrep.simx_opmode_oneshot)
+                        break
+                else:
+                    d = np.sqrt(np.square(target[0] - x) + np.square(target[1] - y))
+                    csv_line = "{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma,d)
+                    data_dump.write(csv_line)
+                    if d < 0.005:
+                        print "Robot has reached its target!"
+                        vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0, vrep.simx_opmode_oneshot)
+                        vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0, vrep.simx_opmode_oneshot)
+                        break
             ##                   ##
             #######################
             

@@ -199,8 +199,10 @@ class DiffRobot(object):
         self.setMotorSpeed()
 
     def update_target_Brait(self):
-        #v, w = self.model.Evade2b()
-        v, w = self.model.Mixed2b3a()
+        if self.model.target == None:
+            v, w = self.model.Evade2b()
+        else:
+            v, w = self.model.Mixed2b3a()
         self.v_ref = v
         self.w_ref = w
         self.setMotorSpeed()
