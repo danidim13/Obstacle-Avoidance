@@ -1,5 +1,5 @@
-#! /usr/bin/python
-# python
+#! python
+# /usr/bin/python
 
 import sys
 import time
@@ -17,8 +17,8 @@ print "LOG START"
 windows_path = 'C:\\Program Files (x86)\\V-REP3\\V-REP_PRO_EDU\\Obstacle-Avoidance\\Py'
 linux_path = '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py'
 
-#sys.path.insert(0, windows_path)
-sys.path.insert(0, linux_path)
+sys.path.insert(0, windows_path)
+#sys.path.insert(0, linux_path)
 
 import Braitenberg as brait
 import DiffRobot as DR
@@ -97,8 +97,8 @@ def runSim(argc, argv):
         #robot = vfh.VFHModel()
         print "Iniciando el robot!"
 
-        modo = DR.M_VFH
-        #modo = DR.M_BRAIT
+        #modo = DR.M_VFH
+        modo = DR.M_BRAIT
 
         data_filename = "sim_data_{:d}.csv".format(modo)
         data_dump = open(data_filename, 'w')
@@ -113,15 +113,22 @@ def runSim(argc, argv):
         #robot.set_target(2.6,3.1) 
 
         # Pista 3
-        #robot.set_target(2.75,3.5) 
+        robot.set_target(2.75,3.5) 
 
 
         X_TRAS = 2.5
         Y_TRAS = 2.5
         G_TRAS = 0.0
-        #target = np.array([2.6-X_TRAS,3.1-Y_TRAS])
-        target = None
         robot.set_initial_pos(X_TRAS, Y_TRAS,0)
+
+        # Sin objetivo
+        #target = None
+        # Pista 1
+        #target = np.array([2.5-X_TRAS,3.0-Y_TRAS])
+        # Pista 2
+        #target = np.array([2.6-X_TRAS,3.1-Y_TRAS])
+        # Pista 3
+        target = np.array([2.75-X_TRAS,3.5-Y_TRAS])
 
         simTime = 0.0
 
@@ -250,7 +257,7 @@ def runSim(argc, argv):
             ## Dump data to file ##
             if posReturnCode == vrep.simx_return_ok and oriReturnCode == vrep.simx_return_ok:
                 
-                if target == None:
+                if target is None:
                     pass
                     csv_line = "{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma)
                     data_dump.write(csv_line)
@@ -263,7 +270,7 @@ def runSim(argc, argv):
                     d = np.sqrt(np.square(target[0] - x) + np.square(target[1] - y))
                     csv_line = "{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma,d)
                     data_dump.write(csv_line)
-                    if d < 0.005:
+                    if d < 0.010:
                         print "Robot has reached its target!"
                         vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0, vrep.simx_opmode_oneshot)
                         vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0, vrep.simx_opmode_oneshot)
@@ -276,6 +283,9 @@ def runSim(argc, argv):
 
         ### End of Simulation loop ###
         ##############################
+        vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0.0, vrep.simx_opmode_oneshot)
+        vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0.0, vrep.simx_opmode_oneshot)
+        time.sleep(0.5)
 
         vrep.simxFinish(clientID)
 

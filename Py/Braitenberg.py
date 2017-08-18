@@ -111,7 +111,7 @@ class BraitModel(object):
         right_s = (self.radius)/right_d2
 
         close_min = 0.5
-        close_max = 1.0
+        close_max = 1.3
 
         v_left1 = MapStimulus(left_s, close_min, close_max, 1.0, 0.0)
         v_right1 = MapStimulus(right_s, close_min, close_max, 1.0, 0.0)
@@ -129,8 +129,8 @@ class BraitModel(object):
         v_right2 = MapStimulus(d_left, self.D_MIN, self.D_MAX, 0.0, 1.0)
 
         ratio = 0.2
-        v_left = (v_left1*ratio + v_left2*(1-ratio))/2
-        v_right = (v_right1*ratio + v_right2*(1-ratio))/2
+        v_left = (v_left1*ratio + v_left2*(1-ratio))
+        v_right = (v_right1*ratio + v_right2*(1-ratio))
         print "v_left = %.3f" % v_left
         print "v_right = %.3f" % v_right
 
@@ -208,7 +208,7 @@ class BraitModel(object):
                 self.sensor_r = sum(right)/float(len(right))
 
         elif self.s_mode == SMODE_FULL:
-            num = 15
+            num = 40
 
             sum_l = sum(left)
             if len(left) < num:
