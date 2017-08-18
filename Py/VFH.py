@@ -124,11 +124,12 @@ class VFHModel:
                     x < GRID_SIZE*RESOLUTION and \
                     y < GRID_SIZE*RESOLUTION:
                 self.target = (x,y)
-                return 1
-            return 0
+                return 0
+            else:
+                raise ValueError("Tried to set the target ({:d},{:d}) outside the obstacle grid".format(x,y))
         else:
             self.target = None
-            return 2
+            return -1
 
     def update_obstacle_density(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
