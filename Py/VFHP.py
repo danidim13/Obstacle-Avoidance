@@ -19,22 +19,21 @@ RESOLUTION = np.float_(0.05)
 
 # Size of the active window that
 # travels with the robot
-WINDOW_SIZE = 15
+WINDOW_SIZE = 25
 assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
 WINDOW_CENTER = WINDOW_SIZE/2
 
 # Size of each polar sector
 # in the polar histogram (in degrees)
 ALPHA = 5
-if np.mod(360, ALPHA) != 0:
-    raise ValueError("Alpha must define an int amount of sectors")
+assert np.mod(360, ALPHA) == 0, "Alpha must define an int amount of sectors"
 HIST_SIZE = 360/ALPHA
 
 # Constants for virtual vector magnitude calculations
 # D_max^2 = 2*(ws-1/2)^2*R^2
 # A - B*D_max^2 = 1
 D_max2 = np.square((WINDOW_SIZE-1)*RESOLUTION)/2.0
-B = np.float_(1.0)
+B = np.float_(10.0)
 A = np.float_(1+B*D_max2)
 
 # Constants for obstacle enlargement
@@ -45,8 +44,8 @@ D_S   = 0.01
 R_RS  = R_ROB + D_S
 
 # Valley/Peak threshold
-T_LO = 20000.0
-T_HI = 40000.0
+T_LO = 2000.0
+T_HI = 8000.0
 WIDE_V = HIST_SIZE/4
 V_MAX = 0.0628
 V_MIN = 0.00628
@@ -132,8 +131,18 @@ class VFHPModel:
         self.t_dir = 0
         self.prev_dir = 0
 
-    def set_target(self, x, y):
-        self.target = x, y
+    def set_target(self, x=None, y=None):
+        if x != None and y != None:
+            if x >= 0 and y >= 0 and \
+                    x < GRID_SIZE*RESOLUTION and \
+                    y < GRID_SIZE*RESOLUTION:
+                self.target = (x,y)
+                return 0
+            else:
+                raise ValueError("Tried to set the target ({:d},{:d}) outside the obstacle grid".format(x,y))
+        else:
+            self.target = None
+            return -1
 
     def update_position(self, x, y, cita):
         self.x_0 = x
@@ -151,8 +160,6 @@ class VFHPModel:
         else:
             # Else set the current direction as the target
             self.t_dir = self.cita
-
-
 
     def update_obstacle_density(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
@@ -244,12 +251,18 @@ class VFHPModel:
         X_r = WINDOW_SIZE*RESOLUTION/2.0
         Y_r = WINDOW_SIZE*RESOLUTION/2.0
 
+        print "INFO: phi_back is {:.3f}".format(phi_back)
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
+                #FIXME La magintud del vector != al valor en el histograma
+                #T_HI es para el histograma por eso se está saltando todas las celdas
+                #Hay que cambiar la condición de este if
                 if self.active_window[i,j,MAG] < T_HI:
+                    print "Skipped cel ({},{}) = {:.3f}".format(i,j,self.active_window[i,j,MAG])
                     continue
                 if self._isInRange(self.cita, phi_left, self.active_window[i,j,BETA]):
                     #left
+                    print "Entering cell ({:d},{:d}) in left range".format(i,j)
                     r_robl_x = steer_l*np.cos(np.radians(self.cita+90.0))
                     r_robl_y = steer_l*np.sin(np.radians(self.cita+90.0))
 
@@ -291,7 +304,7 @@ class VFHPModel:
             if self.bin_polar_hist[k] == False and self._isInRange(phi_right,phi_left,k*ALPHA):
                 self.masked_polar_hist[k] = False
             else:
-                self.masked_polar_hist = True
+                self.masked_polar_hist[k] = True
 
     # This function determines if an angle in the range
     # [0, 360[ is inside the sector given, from start to
@@ -414,28 +427,29 @@ class VFHPModel:
 
 def main():
     np.set_printoptions(precision=2)
-    robot = VFHModel()
+    robot = VFHPModel()
     print "Obstacle grid"
     print robot.obstacle_grid, "\n"
     print "Active Window angles"
     print robot.active_window[:,:,BETA], "\n"
     print "Active Window squared distances"
     print robot.active_window[:,:,DIST2], "\n"
+    print "Active Window a-bd^2 constants"
+    print robot.active_window[:,:,ABDIST], "\n"
     print "Max distance squared: %f" % D_max2
 
     
     print("Updating the obstacle grid and robot position")
 
-    robot.update_position(1.5,1.5,270.0)
+    robot.update_position(1.5,1.5,90.0)
 
-#    robot.obstacle_grid[1,6] = 1
-#    robot.obstacle_grid[1,5] = 2
-#    robot.obstacle_grid[1,4] = 2
-#    robot.obstacle_grid[1,3] = 5
-#    robot.obstacle_grid[1,2] = 13
-#    robot.obstacle_grid[2,2] = 3
-#    robot.obstacle_grid[3,2] = 3
-#    robot.obstacle_grid[4,2] = 3
+    #robot.obstacle_grid[1,6] = 1
+    #robot.obstacle_grid[1,5] = 2
+    #robot.obstacle_grid[1,4] = 2
+    #robot.obstacle_grid[1,3] = 5
+    #robot.obstacle_grid[2,2] = 3
+    #robot.obstacle_grid[3,2] = 3
+    #robot.obstacle_grid[4,2] = 3
 #
 #    robot.obstacle_grid[9,2] = 4
 #    robot.obstacle_grid[9,3] = 5
@@ -443,12 +457,33 @@ def main():
 #    robot.obstacle_grid[9,5] = 5
 #    robot.obstacle_grid[9,6] = 4
 
-    print robot.i_0, robot.j_0
+    robot.obstacle_grid[27,30] = 20
+    robot.obstacle_grid[27,31] = 20
+    robot.obstacle_grid[27,29] = 20
+    robot.obstacle_grid[28,30] = 20
+    robot.obstacle_grid[26,30] = 20
+
+    robot.obstacle_grid[30,37] = 20
+    robot.obstacle_grid[31,37] = 20
+    robot.obstacle_grid[29,37] = 20
+    robot.obstacle_grid[30,38] = 20
+    robot.obstacle_grid[30,36] = 20
+
+    robot.obstacle_grid[41,30] = 20
+    robot.obstacle_grid[40,30] = 20
+    robot.obstacle_grid[42,30] = 20
+    robot.obstacle_grid[41,31] = 20
+    robot.obstacle_grid[41,29] = 20
+
+    print "i , j , k "
+    print robot.i_0, robot.j_0, robot.k_0
     print robot._active_grid(), "\n"
 
     print "Simulating a set of sensor readings"
     pseudo_readings = np.float_([[0.2, np.radians(x)] for x in range(0,90,2)])
+    #pseudo_readings = np.float_([[0.3,
     robot.update_obstacle_density(pseudo_readings)
+
 
     print "Updating the active window"
     robot.update_active_window()
@@ -458,37 +493,58 @@ def main():
     robot.update_polar_histogram()
     print robot.polar_hist, "\n"
 
-    print "Updating filtered histogram"
-    robot.update_filtered_polar_histogram()
-    print robot.filt_polar_hist, "\n"
+    print "Updating binary histogram"
+    robot.update_bin_polar_histogram()
+    print robot.bin_polar_hist, "\n"
 
-    print "Looking for valleys"
-    robot.find_valleys()
-    print robot.valleys, "\n"
+    print "Updating masked polar histogram"
+    robot.update_masked_polar_hist(R_ROB*10,R_ROB*10)
+    print robot.masked_polar_hist, "\n"
 
-    try:
-        print "Setting steer direction"
-        cita = robot.calculate_steering_dir()
-        print cita, "\n"
-    except:
-        pass
+#    print "Updating filtered histogram"
+#    robot.update_filtered_polar_histogram()
+#    print robot.filt_polar_hist, "\n"
+#
+#    print "Looking for valleys"
+#    robot.find_valleys()
+#    print robot.valleys, "\n"
+#
+#    try:
+#        print "Setting steer direction"
+#        cita = robot.calculate_steering_dir()
+#        print cita, "\n"
+#    except:
+#        pass
 
     ### Figuras y graficos ###
+#
+#    plt.figure(2)
+#    plt.plot(i, robot.filt_polar_hist ) #, 0.1, 0, color='b')
+#    plt.title("Histograma polar filtrado")
+
     plt.figure(1)
-    x = [ALPHA*x for x in range(len(robot.filt_polar_hist))]
-    i = [a for a in range(len(robot.filt_polar_hist))]
-    plt.bar(x, robot.polar_hist, 8.0, 0, color='r')
-    plt.title("Histograma polar")
-
-    plt.figure(2)
-    plt.plot(i, robot.filt_polar_hist ) #, 0.1, 0, color='b')
-    plt.title("Histograma polar filtrado")
-
-    plt.figure(3)
     plt.pcolor(robot._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
     plt.xlabel("X")
     plt.ylabel("Y", rotation='horizontal')
     
+    plt.figure(2)
+    x = [ALPHA*x for x in range(len(robot.polar_hist))]
+    i = [a for a in range(len(robot.polar_hist))]
+    plt.bar(x, robot.polar_hist, 3.0, 0, color='r')
+    plt.title("Histograma polar")
+
+    plt.figure(3)
+    x = [ALPHA*x for x in range(len(robot.polar_hist))]
+    i = [a for a in range(len(robot.polar_hist))]
+    plt.bar(x, robot.bin_polar_hist, 3.0, 0, color='b')
+    plt.title("Histograma polar binario")
+    
+    plt.figure(4)
+    x = [ALPHA*x for x in range(len(robot.polar_hist))]
+    i = [a for a in range(len(robot.polar_hist))]
+    plt.bar(x, robot.masked_polar_hist, 3.0, 0, color='g')
+    plt.title("Histograma polar mascarado")
+
     plt.show()
 
 if __name__ == "__main__":
