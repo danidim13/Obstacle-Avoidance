@@ -42,6 +42,10 @@ class DiffRobot(object):
         elif c_type == M_VFHP:
             print "Using VFH+ algorithm"
             self.model = VFHP.VFHPModel()
+            VFHP.OMEGA_MAX = self.omega_max
+            VFHP.V_MAX = self.v_max
+            VFHP.V_MIN = self.v_max*0.2
+            self.model = VFHP.VFHPModel()
 
 
         # Valores deseados de velocidad, velocidad angular y
@@ -88,7 +92,12 @@ class DiffRobot(object):
         self.model.UpdatePos(x, y, cita)
         
     def set_initial_pos_VFHP(self, x, y, cita):
-        pass
+        self.cita = cita
+        #self.cita_prev = cita
+        #self.w_prev = 0.0
+        self.model.update_position(x, y, np.degrees(cita))
+        self.angle_controller.setInput(cita)
+        self.angle_controller.setRef(cita)
 
     def set_target(self, x, y):
         if self.c_type == M_VFH:
@@ -137,7 +146,13 @@ class DiffRobot(object):
         self.model.UpdatePos(x, y, cita)
 
     def update_pos_VFHP(self, x, y, cita, delta_t):
-        pass
+
+        self.cita = cita
+        self.model.update_position(x, y, np.degrees(cita))
+
+        self.angle_controller.setInput(cita)
+        self.w_ref = self.angle_controller.timestep(delta_t)
+        print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
     def update_readings(self, data):
         if self.c_type == M_VFH:
@@ -160,6 +175,11 @@ class DiffRobot(object):
         self.model.UpdateSensors(data)
 
     def update_readings_VFHP(self, data):
+        try:
+            self.model.update_obstacle_density(data)
+        except Exception as e:
+            print "Exception caught during sensor update:"
+            print e
         pass
 
     def update_target(self):
@@ -207,6 +227,26 @@ class DiffRobot(object):
         self.w_ref = w
         self.setMotorSpeed()
 
+    def update_target_VFHP(self):
+        self.model.update_active_window()
+        self.model.update_polar_histogram()
+        self.model.update_bin_polar_histogram()
+        self.model.update_masked_polar_hist(self.b*2,self.b*2)
+
+        try:
+            self.model.find_valleys()
+            cita, v = self.model.calculate_steering_dir()
+        except Exception as e:
+            print "Exception caught on VHF+ control loop"
+            print e
+            cita = self.cita_ref
+            v = self.v_ref
+
+        self.v_ref = v
+        self.cita_ref = cita
+        self.angle_controller.setRef(self.cita_ref)
+        self.setMotorSpeed()
+
     def setMotorSpeed(self):
         self.left_motor = (self.v_ref - self.b*self.w_ref)/self.r
         self.right_motor = (self.v_ref + self.b*self.w_ref)/self.r
@@ -227,11 +267,11 @@ def main():
     # simulamos 50 ms 
     dt = 0.5
 
-    robot = DiffRobot()
+    robot = DiffRobot(c_type=M_VFHP)
     robot.set_initial_pos(2.5, 2.5, 0)
     robot.update_pos(2.5,2.5,0,dt)
 
-    pseudo_readings = np.float_([[0.25, np.radians(x)] for x in range(0,220,2)])
+    pseudo_readings = np.float_([[0.25, np.radians(x)] for x in range(0,220,1)])
     robot.update_readings(pseudo_readings)
     robot.update_target()
 
