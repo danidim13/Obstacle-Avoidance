@@ -48,16 +48,20 @@ R_RS  = R_ROB + D_S
 # Valley/Peak threshold
 T_LO = 2000.0
 T_HI = 8000.0
-WIDE_V = HIST_SIZE/4
+WIDE_V = HIST_SIZE/6
 V_MAX = 0.0628
-V_MIN = 0.00628
+V_MIN = 0.0 #0.00628
 OMEGA_MAX = 1.256
 
 # Cost function constants
 # Recommended mu1 > m2 + m3
+# mu1 = target following cost
+# mu2 = sharp steering cost
+# mu3 = direction commiting cost
 mu1 = 5.0
 mu2 = 2.0
 mu3 = 2.0
+MAX_COST = 180.0*(mu1+mu2+mu3)
 
 
 # Active window array indexes
@@ -132,6 +136,7 @@ class VFHPModel:
         self.target = None
         self.t_dir = 0
         self.prev_dir = 0
+        self.prev_cost = 0
 
     def set_target(self, x=None, y=None):
         if x != None and y != None:
@@ -155,13 +160,6 @@ class VFHPModel:
         self.j_0 = int(y / RESOLUTION)
         self.k_0 = int(self.cita / ALPHA)%HIST_SIZE
 
-        if self.target != None:
-            # If there is a target for the robot we calculate the direction
-            self.t_dir = np.degrees(np.arctan2(self.y_0-self.target[1], self.x_0-self.target[0]))
-            self.t_dir = self.t_dir if self.t_dir >= 0 else self.t_dir + 360
-        else:
-            # Else set the current direction as the target
-            self.t_dir = self.cita
 
     def update_obstacle_density(self, sensor_readings):
         # Receives a numpy array of (r, theta) data points #
@@ -390,6 +388,15 @@ class VFHPModel:
         if len(self.valleys) == 0:
             raise Exception("No candidate valleys found to calculate a new direction")
 
+        t_dir = None
+        if self.target != None:
+            # If there is a target for the robot we calculate the direction
+            t_dir = np.degrees(np.arctan2(self.target[1]-self.y_0, self.target[0]-self.x_0))
+            t_dir = t_dir if t_dir >= 0 else t_dir + 360
+        else:
+            # Else set the current direction as the target
+            t_dir = self.cita
+
         candidate_dirs = []
         for v in self.valleys:
             s1, s2 = v
@@ -399,6 +406,7 @@ class VFHPModel:
                 # Narrow valley
                 # The only target dir is the middle of 
                 # the oppening
+                print "narrow valley"
                 c_center = ALPHA*(s1 + v_size/2.0)
                 c_center = c_center - 360.0 if c_center >= 360.0 else c_center
                 candidate_dirs.append(c_center)
@@ -407,6 +415,7 @@ class VFHPModel:
                 # Wide valley
                 # Target dirs are the left and right
                 # borders,
+                print "wide valley"
                 c_right = ALPHA*(s1 + WIDE_V/2.0)
                 c_right = c_right - 360.0 if c_right >= 360.0 else c_right
 
@@ -416,8 +425,8 @@ class VFHPModel:
                 candidate_dirs.append(c_left)
                 candidate_dirs.append(c_right)
 
-                if self._isInRange(c_right,c_left,self.t_dir):
-                    candidate_dirs.append(self.t_dir)
+                if c_right != c_left and self._isInRange(c_right,c_left,t_dir):
+                    candidate_dirs.append(t_dir)
 
         print candidate_dirs
         # Once all we know all possible candidate dirs
@@ -425,9 +434,10 @@ class VFHPModel:
         new_dir = None
         best_cost = None
         for c in candidate_dirs:
-            cost = mu1*self._abs_angle_diff(c,self.t_dir) + \
+            cost = mu1*self._abs_angle_diff(c,t_dir) + \
                     mu2*self._abs_angle_diff(c,self.cita) + \
                     mu3*self._abs_angle_diff(c,self.prev_dir)
+            print "For candidate dir {:.1f}: {:.3f} cost".format(c,cost)
 
             if best_cost == None:
                 new_dir = c
@@ -437,25 +447,19 @@ class VFHPModel:
                 best_cost = cost
 
         self.prev_dir = new_dir
+        self.prev_cost = best_cost
 
-        return new_dir
+        V = V_MAX*(1 - best_cost/MAX_COST) + V_MIN
+
+        return new_dir, V
 
     @staticmethod
     def _abs_angle_diff(a1, a2):
         return min(360.0 - abs(a1 - a2), abs(a1 - a2))
 
-    def calculate_speed(self, omega=0):
+    def calculate_speed(self):
 
-        # Omega in [rad/s]
-        # Obstacle density in the current direction of travel
-        H_M = 40000.0
-        h_cp = self.polar_hist[self.k_0]
-        h_cpp = min(h_cp, H_M)
-
-        V_prime = V_MAX*(1 - h_cpp/H_M)
-
-        V = V_prime*(1 - omega/OMEGA_MAX) + V_MIN
-
+        V = V_MAX*(1 - self.prev_cost/MAX_COST) + V_MIN
         return V
 
     @staticmethod
@@ -545,7 +549,11 @@ def main():
     print robot.valleys, "\n"
 
     print "Select new direction"
-    print robot.calculate_steering_dir()
+    robot.prev_dir = 90.0
+    print robot.calculate_steering_dir(), "\n"
+
+    print "Setting speed to (MAX = {:.2f})".format(V_MAX)
+    print robot.calculate_speed(), "\n"
 
     
 #    print "Updating filtered histogram"
