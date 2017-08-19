@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 
 # Size of the full Grid
 GRID_SIZE = 100
+# Maximum certantinty value
+C_MAX = 20
 
 # Resolution of each cell (in m)
 RESOLUTION = np.float_(0.05)
@@ -177,7 +179,7 @@ class VFHPModel:
                 continue
             i = int( (self.x_0 + r*np.cos(theta + np.radians(self.cita)))/RESOLUTION )
             j = int( (self.y_0 + r*np.sin(theta + np.radians(self.cita)))/RESOLUTION )
-            if self.obstacle_grid[i,j] < 20: self.obstacle_grid[i,j] += 1
+            if self.obstacle_grid[i,j] < C_MAX: self.obstacle_grid[i,j] += 1
 
     def _active_grid(self):
 
@@ -254,15 +256,48 @@ class VFHPModel:
         print "INFO: phi_back is {:.3f}".format(phi_back)
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
-                #FIXME La magintud del vector != al valor en el histograma
-                #T_HI es para el histograma por eso se está saltando todas las celdas
-                #Hay que cambiar la condición de este if
-                if self.active_window[i,j,MAG] < T_HI:
-                    print "Skipped cel ({},{}) = {:.3f}".format(i,j,self.active_window[i,j,MAG])
+
+                if self.active_window[i,j,MAG] <= 2*(C_MAX**2) or (i == WINDOW_CENTER and j == WINDOW_CENTER):
+                    #print "Skipped cel ({},{}) = {:.3f}".format(i,j,self.polar_hist[k])
                     continue
-                if self._isInRange(self.cita, phi_left, self.active_window[i,j,BETA]):
+
+                if self.active_window[i,j,BETA] == self.cita:
+                    #print "Entering cell ({:d},{:d}) dead ahead".format(i,j)
+
+                    # position of the cell
+                    cij_x = (i+0.5)*RESOLUTION
+                    cij_y = (j+0.5)*RESOLUTION
+
+                    #### Left steering radius
+                    r_robl_x = steer_l*np.cos(np.radians(self.cita+90.0))
+                    r_robl_y = steer_l*np.sin(np.radians(self.cita+90.0))
+                    # center of the steering radius in the active window
+                    r_steer_x = X_r + r_robl_x
+                    r_steer_y = Y_r + r_robl_y
+
+                    c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
+                    #print "Left dist {:.3f}".format(c_dist2)
+                    if c_dist2 < np.square(R_RS + steer_l):
+                        phi_left = self.active_window[i,j,BETA] + 0.1
+                        print "Setting left limit angle to {:.1f} on cell ({:d},{:d}) = {:.1f}".format(phi_left, i, j, self.active_window[i,j,MAG])
+
+                    #### Right steering radius
+                    r_robr_x = steer_r*np.cos(np.radians(self.cita-90.0))
+                    r_robr_y = steer_r*np.sin(np.radians(self.cita-90.0))
+                    # center of the steering radius in the active window
+                    r_steer_x = X_r + r_robr_x
+                    r_steer_y = Y_r + r_robr_y
+
+                    c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
+                    #print "Right dist {:.3f}, limit {:.3f}".format(c_dist2,np.square(R_RS + steer_r))
+                    if c_dist2 < np.square(R_RS + steer_r):
+                        phi_right = self.active_window[i,j,BETA] - 0.1
+                        print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right, i, j)
+
+
+                elif self._isInRange(self.cita, phi_left, self.active_window[i,j,BETA]):
                     #left
-                    print "Entering cell ({:d},{:d}) in left range".format(i,j)
+                    #print "Entering cell ({:d},{:d}) in left range".format(i,j)
                     r_robl_x = steer_l*np.cos(np.radians(self.cita+90.0))
                     r_robl_y = steer_l*np.sin(np.radians(self.cita+90.0))
 
@@ -271,17 +306,19 @@ class VFHPModel:
                     r_steer_y = Y_r + r_robl_y
 
                     # position of the cell
-                    cij_x = i*RESOLUTION
-                    cij_y = j*RESOLUTION
+                    cij_x = (i+0.5)*RESOLUTION
+                    cij_y = (j+0.5)*RESOLUTION
 
                     # distance^2 from the cell to the steering center
                     c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
 
                     if c_dist2 < np.square(R_RS + steer_l):
                         phi_left = self.active_window[i,j,BETA]
+                        print "Setting left limit angle to {:.1f} on cell ({:d},{:d}) = {:.1f}".format(phi_left, i, j, self.active_window[i,j,MAG])
 
                 elif self._isInRange(phi_right,self.cita,self.active_window[i,j,BETA]):
                     #right
+                    #print "Entering cell ({:d},{:d}) in right range".format(i,j)
                     r_robr_x = steer_r*np.cos(np.radians(self.cita-90.0))
                     r_robr_y = steer_r*np.sin(np.radians(self.cita-90.0))
 
@@ -290,14 +327,15 @@ class VFHPModel:
                     r_steer_y = Y_r + r_robr_y
 
                     # position of the cell
-                    cij_x = i*RESOLUTION
-                    cij_y = j*RESOLUTION
+                    cij_x = (i+0.5)*RESOLUTION
+                    cij_y = (j+0.5)*RESOLUTION
 
                     # distance^2 from the cell to the steering center
                     c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
 
                     if c_dist2 < np.square(R_RS + steer_r):
                         phi_right = self.active_window[i,j,BETA]
+                        print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right, i, j)
 
 
         for k in xrange(HIST_SIZE):
@@ -378,17 +416,18 @@ class VFHPModel:
                 candidate_dirs.append(c_left)
                 candidate_dirs.append(c_right)
 
-                if _isInRange(c_right,c_left,self.t_dir):
+                if self._isInRange(c_right,c_left,self.t_dir):
                     candidate_dirs.append(self.t_dir)
 
+        print candidate_dirs
         # Once all we know all possible candidate dirs
         # choose the one with the lowest cost
         new_dir = None
         best_cost = None
         for c in candidate_dirs:
-            cost = mu1*_abs_angle_diff(c,self.t_dir) + \
-                    mu2*_abs_angle_diff(c,self.cita) + \
-                    mu3*_abs_angle_diff(c,self.prev_dir)
+            cost = mu1*self._abs_angle_diff(c,self.t_dir) + \
+                    mu2*self._abs_angle_diff(c,self.cita) + \
+                    mu3*self._abs_angle_diff(c,self.prev_dir)
 
             if best_cost == None:
                 new_dir = c
@@ -402,7 +441,7 @@ class VFHPModel:
         return new_dir
 
     @staticmethod
-    def _abs_angle_diff(self,a1, a2):
+    def _abs_angle_diff(a1, a2):
         return min(360.0 - abs(a1 - a2), abs(a1 - a2))
 
     def calculate_speed(self, omega=0):
@@ -498,9 +537,17 @@ def main():
     print robot.bin_polar_hist, "\n"
 
     print "Updating masked polar histogram"
-    robot.update_masked_polar_hist(R_ROB*10,R_ROB*10)
+    robot.update_masked_polar_hist(R_ROB*1,R_ROB*1)
     print robot.masked_polar_hist, "\n"
 
+    print "Looking for valleys"
+    robot.find_valleys()
+    print robot.valleys, "\n"
+
+    print "Select new direction"
+    print robot.calculate_steering_dir()
+
+    
 #    print "Updating filtered histogram"
 #    robot.update_filtered_polar_histogram()
 #    print robot.filt_polar_hist, "\n"
