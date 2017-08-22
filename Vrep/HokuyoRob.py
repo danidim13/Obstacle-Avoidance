@@ -2,6 +2,7 @@
 
 import sys
 import platform
+import os
 import time
 import math
 import numpy as np
@@ -17,13 +18,16 @@ print "LOG START"
 windows_path = 'C:\\Program Files (x86)\\V-REP3\\V-REP_PRO_EDU\\Obstacle-Avoidance\\Py'
 linux_path = '/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py'
 
+pwd = os.path.dirname(os.path.realpath(__file__))
+agnostic_path = os.path.abspath(os.path.join(pwd, '..', 'Py'))
+
 if "Linux" in platform.system():
     sys.path.insert(0, linux_path)
 elif "Windows" in platform.system():
     sys.path.insert(0, windows_path)
 else:
     print "Unrecognizable OS"
-    sys.path.insert(0, windows_path)
+    sys.path.insert(0, agnostic_path)
 
 import Braitenberg as brait
 import DiffRobot as DR
