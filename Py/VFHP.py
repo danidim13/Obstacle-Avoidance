@@ -42,7 +42,7 @@ A = np.float_(1+B*D_max2)
 # Robot radius
 R_ROB = 0.0375
 # Minimum obstacle distance
-D_S   = 0.01
+D_S   = 0.08
 R_RS  = R_ROB + D_S
 
 # Valley/Peak threshold
@@ -92,6 +92,7 @@ class VFHPModel:
 
         # Initialize angles and distance (these don't change)
 
+        print "INITIALIZING"
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
                 if j == WINDOW_CENTER and i == WINDOW_CENTER:
@@ -104,7 +105,15 @@ class VFHPModel:
                 self.active_window[i,j,DIST2] = dist2
                 self.active_window[i,j,ABDIST] = A - B*dist2
                 self.active_window[i,j,GAMA] = np.degrees(np.arcsin(np.float_(R_RS)/np.sqrt(dist2)))
-
+                if np.isnan(self.active_window[i,j,GAMA]):
+                    print "cell ({:d},{:d}) gamma = ".format(i,j), self.active_window[i,j,GAMA]
+                    print "setting to 90.0"
+                    #print dist2, type(dist2)
+                    #print R_RS, type(R_RS)
+                    #print np.sqrt(dist2)
+                    #print np.float_(R_RS)/np.sqrt(dist2)
+                    #print "arcoseno ", np.arcsin(np.float_(R_RS)/np.sqrt(dist2))
+                    self.active_window[i,j,GAMA] = np.float_(90.0)
 
         # The Polar Histogram maps each cell in the active window
         # to one or more angular sector
@@ -218,10 +227,20 @@ class VFHPModel:
                 if j == WINDOW_CENTER and i == WINDOW_CENTER:
                     continue
                 
+                #print "Determine ranges for cell ({:d}, {:d}".format(i,j)
+                beta = self.active_window[i,j,BETA]
+                gama = self.active_window[i,j,GAMA]
+                alfa = ALPHA
+                #print beta, type(beta), gama, type(gama), alfa, type(alfa)
+
                 # Determine the range of histogram sectors that needs to be updated
                 low = int(np.ceil((self.active_window[i,j,BETA] - self.active_window[i,j,GAMA])/ALPHA))
+                #print low
                 high = int(np.floor((self.active_window[i,j,BETA] + self.active_window[i,j,GAMA])/ALPHA))
+                #print high
+                #print "Updating sectors [{:d} {:d}] for cell ({:d}, {:d})".format(low, high, i, j)
                 k_range = [x%HIST_SIZE for x in np.linspace(low, high, high-low+1, True, dtype = int)]
+                #print k_range
                 for k in k_range:
                     assert k < HIST_SIZE and k >= 0, "Error for polar histogram index: %d on i = %d, j = %d" % (k, i, j)
                     self.polar_hist[k] += self.active_window[i, j, MAG]

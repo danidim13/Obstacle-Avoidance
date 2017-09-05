@@ -32,6 +32,7 @@ else:
 import Braitenberg as brait
 import DiffRobot as DR
 import VFH as vfh
+import VFHP as vfhp
 
 
 
@@ -107,7 +108,8 @@ def runSim(argc, argv):
         print "Iniciando el robot!"
 
         #modo = DR.M_VFH
-        modo = DR.M_BRAIT
+        #modo = DR.M_BRAIT
+        modo = DR.M_VFHP
 
         data_filename = "sim_data_{:d}.csv".format(modo)
         data_dump = open(data_filename, 'w')
@@ -116,13 +118,13 @@ def runSim(argc, argv):
         robot = DR.DiffRobot(c_type=modo)
 
         # Pista 1
-        #robot.set_target(2.5,3.0) 
+        robot.set_target(2.5,3.0) 
 
         # Pista 2
         #robot.set_target(2.6,3.1) 
 
         # Pista 3
-        robot.set_target(2.75,3.5) 
+        #robot.set_target(2.75,3.5) 
 
 
         X_TRAS = 2.5
@@ -132,12 +134,15 @@ def runSim(argc, argv):
 
         # Sin objetivo
         #target = None
+
         # Pista 1
-        #target = np.array([2.5-X_TRAS,3.0-Y_TRAS])
+        target = np.array([2.5-X_TRAS,3.0-Y_TRAS])
+
         # Pista 2
         #target = np.array([2.6-X_TRAS,3.1-Y_TRAS])
+
         # Pista 3
-        target = np.array([2.75-X_TRAS,3.5-Y_TRAS])
+        #target = np.array([2.75-X_TRAS,3.5-Y_TRAS])
 
         simTime = 0.0
 
@@ -340,6 +345,47 @@ def runSim(argc, argv):
 
         if robot.c_type == DR.M_BRAIT:
             print "BraitRob end!"
+
+        if robot.c_type == DR.M_VFHP:
+            print "\nRobot position and orientation"
+            print robot.model.x_0, robot.model.y_0, robot.model.cita
+
+            print "\nRobot i, j, k"
+            print robot.model.i_0, robot.model.j_0, robot.model.k_0
+
+            print "\nRobot active grid"
+            print robot.model._active_grid()
+
+            print "\nRobot polar histogram"
+            print robot.model.polar_hist
+
+            print "Ventana activa"
+            plt.figure(1)
+            plt.pcolor(robot.model._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+            plt.xlabel("X")
+            plt.ylabel("Y", rotation='horizontal')
+            plt.title("Ventana activa")
+
+            x = [vfhp.ALPHA*x for x in range(vfhp.HIST_SIZE)]
+            print "histograma polar"
+            plt.figure(2)
+            plt.bar(x, robot.model.polar_hist, 4.0, 0, color='b')
+            plt.xlabel("Angulo [grados]")
+            plt.title("Histograma polar")
+
+            print "histograma polar binario"
+            plt.figure(3)
+            plt.bar(x, robot.model.bin_polar_hist, 4.0, 0, color='b')
+            plt.xlabel("Angulo [grados]")
+            plt.title("Histograma polar binario")
+
+            print "histograma polar mascarado"
+            plt.figure(4)
+            plt.bar(x, robot.model.masked_polar_hist, 4.0, 0, color='b')
+            plt.xlabel("Angulo [grados]")
+            plt.title("Histograma polar mascarado")
+
+            plt.show()
 
     return 0
 
