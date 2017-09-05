@@ -12,16 +12,16 @@ import matplotlib.pyplot as plt
 ###                                 ####
 
 # Size of the full Grid
-GRID_SIZE = 100
+GRID_SIZE = 250
 # Maximum certantinty value
 C_MAX = 20
 
 # Resolution of each cell (in m)
-RESOLUTION = np.float_(0.05)
+RESOLUTION = np.float_(0.02)
 
 # Size of the active window that
 # travels with the robot
-WINDOW_SIZE = 15
+WINDOW_SIZE = 25
 assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
 WINDOW_CENTER = WINDOW_SIZE/2
 
@@ -40,14 +40,14 @@ A = np.float_(1+B*D_max2)
 
 # Constants for obstacle enlargement
 # Robot radius
-R_ROB = 0.0375
+R_ROB = 0.02
 # Minimum obstacle distance
-D_S   = 0.08
+D_S   = 0.04
 R_RS  = R_ROB + D_S
 
 # Valley/Peak threshold
-T_LO = 2000.0
-T_HI = 2500.0
+T_LO = 3000.0
+T_HI = 3500.0
 WIDE_V = HIST_SIZE/8
 V_MAX = 0.0628
 V_MIN = 0.0 #0.00628

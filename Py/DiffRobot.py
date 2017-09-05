@@ -231,7 +231,7 @@ class DiffRobot(object):
         self.model.update_active_window()
         self.model.update_polar_histogram()
         self.model.update_bin_polar_histogram()
-        self.model.update_masked_polar_hist(0.0,0.0)
+        self.model.update_masked_polar_hist(self.b,self.b)
 
         try:
             result = self.model.find_valleys()
