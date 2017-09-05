@@ -234,8 +234,8 @@ class DiffRobot(object):
         self.model.update_masked_polar_hist(0.0,0.0)
 
         try:
-            self.model.find_valleys()
-            cita, v = self.model.calculate_steering_dir()
+            result = self.model.find_valleys()
+            cita, v = self.model.calculate_steering_dir(result)
         except Exception as e:
             print "Exception caught on VHF+ control loop"
             print e
@@ -243,7 +243,7 @@ class DiffRobot(object):
             v = self.v_ref
 
         self.v_ref = v
-        self.cita_ref = cita
+        self.cita_ref = np.radians(cita)
         self.angle_controller.setRef(self.cita_ref)
         self.setMotorSpeed()
 

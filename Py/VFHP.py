@@ -21,7 +21,7 @@ RESOLUTION = np.float_(0.05)
 
 # Size of the active window that
 # travels with the robot
-WINDOW_SIZE = 25
+WINDOW_SIZE = 15
 assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
 WINDOW_CENTER = WINDOW_SIZE/2
 
@@ -47,8 +47,8 @@ R_RS  = R_ROB + D_S
 
 # Valley/Peak threshold
 T_LO = 2000.0
-T_HI = 8000.0
-WIDE_V = HIST_SIZE/6
+T_HI = 2500.0
+WIDE_V = HIST_SIZE/8
 V_MAX = 0.0628
 V_MIN = 0.0 #0.00628
 OMEGA_MAX = 1.256
@@ -58,7 +58,7 @@ OMEGA_MAX = 1.256
 # mu1 = target following cost
 # mu2 = sharp steering cost
 # mu3 = direction commiting cost
-mu1 = 5.0
+mu1 = 6.0
 mu2 = 2.0
 mu3 = 2.0
 MAX_COST = 180.0*(mu1+mu2+mu3)
@@ -405,11 +405,11 @@ class VFHPModel:
                 if self.masked_polar_hist[index]:
                     self.valleys.append(tuple([v_start, index-1]))
                     valley_found = False
-        return 0
+        return len(self.valleys)
 
-    def calculate_steering_dir(self):
+    def calculate_steering_dir(self, valley_count):
 
-        if len(self.valleys) == 0:
+        if valley_count == 0:
             raise Exception("No candidate valleys found to calculate a new direction")
 
         t_dir = None
@@ -421,36 +421,43 @@ class VFHPModel:
             # Else set the current direction as the target
             t_dir = self.cita
 
+
         candidate_dirs = []
-        for v in self.valleys:
-            s1, s2 = v
-            v_size = (s2 - s1) if s2 >= s1 else HIST_SIZE - (s1-s2)
 
-            if v_size < WIDE_V:
-                # Narrow valley
-                # The only target dir is the middle of 
-                # the oppening
-                print "narrow valley"
-                c_center = ALPHA*(s1 + v_size/2.0)
-                c_center = c_center - 360.0 if c_center >= 360.0 else c_center
-                candidate_dirs.append(c_center)
+        print self.valleys
+        if valley_count == -1:
+            print "No obstacles nearby, setting route to target at {:.1f}".format(t_dir)
+            candidate_dirs.append(t_dir)
+        else:
+            for v in self.valleys:
+                s1, s2 = v
+                v_size = (s2 - s1) if s2 >= s1 else HIST_SIZE - (s1-s2)
 
-            else:
-                # Wide valley
-                # Target dirs are the left and right
-                # borders,
-                print "wide valley"
-                c_right = ALPHA*(s1 + WIDE_V/2.0)
-                c_right = c_right - 360.0 if c_right >= 360.0 else c_right
+                if v_size < WIDE_V:
+                    # Narrow valley
+                    # The only target dir is the middle of 
+                    # the oppening
+                    print "narrow valley"
+                    c_center = ALPHA*(s1 + v_size/2.0)
+                    c_center = c_center - 360.0 if c_center >= 360.0 else c_center
+                    candidate_dirs.append(c_center)
 
-                c_left = ALPHA*(s2 - WIDE_V/2.0)
-                c_left = c_left + 360.0 if c_left < 0.0 else c_left
+                else:
+                    # Wide valley
+                    # Target dirs are the left and right
+                    # borders,
+                    print "wide valley"
+                    c_right = ALPHA*(s1 + WIDE_V/2.0)
+                    c_right = c_right - 360.0 if c_right >= 360.0 else c_right
 
-                candidate_dirs.append(c_left)
-                candidate_dirs.append(c_right)
+                    c_left = ALPHA*(s2 - WIDE_V/2.0)
+                    c_left = c_left + 360.0 if c_left < 0.0 else c_left
 
-                if c_right != c_left and self._isInRange(c_right,c_left,t_dir):
-                    candidate_dirs.append(t_dir)
+                    candidate_dirs.append(c_left)
+                    candidate_dirs.append(c_right)
+
+                    if c_right != c_left and self._isInRange(c_right,c_left,t_dir):
+                        candidate_dirs.append(t_dir)
 
         print candidate_dirs
         # Once all we know all possible candidate dirs
@@ -475,6 +482,7 @@ class VFHPModel:
 
         V = V_MAX*(1 - best_cost/MAX_COST) + V_MIN
 
+        print "Setting dir to {:.1f}".format(new_dir)
         return new_dir, V
 
     @staticmethod
