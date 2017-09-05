@@ -270,6 +270,7 @@ class VFHPModel:
         X_r = WINDOW_SIZE*RESOLUTION/2.0
         Y_r = WINDOW_SIZE*RESOLUTION/2.0
 
+        print "INFO: Current dir is {:.3f}".format(self.cita)
         print "INFO: phi_back is {:.3f}".format(phi_back)
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
@@ -355,6 +356,10 @@ class VFHPModel:
                         print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right, i, j)
 
 
+        print "Limit angles:"
+        print "Left:", phi_left
+        print "Right:", phi_right
+        print
         for k in xrange(HIST_SIZE):
             if self.bin_polar_hist[k] == False and self._isInRange(phi_right,phi_left,k*ALPHA):
                 self.masked_polar_hist[k] = False
