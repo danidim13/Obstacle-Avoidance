@@ -11,6 +11,7 @@ Note
 ----
 Como parte del módulo se definen las siguientes constantes
 relevantes al modo de funcionamiento del controlador:
+
     * `SMODE_MIN`
     * `SMODE_AVG`
     * `SMODE_FULL`
@@ -59,8 +60,23 @@ class BraitModel(object):
     sensor_r : float
         Estímulo de evasión del lado derecho.
     target : tuple
-        Punto :math:`\left(x,\:y\right)` objetivo o `None` si no
-        se está siguiendo una trayectoria.
+        Punto :math:`\left(x,\:y\right)` objetivo o ``None`` si
+        no se está siguiendo una trayectoria.
+    s_mode : {SMODE_MIN, SMODE_AVG, SMODE_FULL}, 
+        Modo de sensado, define la forma de obtener los estímulos a partir
+        de las lecturas de los sensores
+    D_MIN : float, 
+        Distancia mínima de detección de obstáculos.
+    D_MAX : float, 
+        Distancia máxima de detección de obstáculos.
+    V_MIN : float, 
+        Velocidad lineal mínima del robot.
+    V_MAX : float, 
+        Velocidad lineal máxima del robot.
+    W_MAX : float, 
+        Velocidad angular máxima del robot (se asume que es la misma en ambas direcciones).
+    ALPHA : float, 
+        Rango angular de visión del robot, dado en radianes.
     """
 
     def __init__(self, s_mode=0, d_min=0.01, d_max=0.25, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):
@@ -90,17 +106,17 @@ class BraitModel(object):
         r"""Obtiene la respuesta de evasión usando el algoritmo del vehículo 2b. 
 
         La respuesta se da en forma de velocidad lineal y
-        angular en los rangos definidos por `V_MIN`, `V_MAX`
-        y `W_MAX`.
+        angular en los rangos definidos por :attr:`V_MIN`,
+        :attr:`V_MAX` y :attr:`W_MAX`.
         
         Parameters
         ----------
         d_left : float, opcional
             Estímulo de evasión del lado izquierdo, por defecto
-            toma el valor de `sensor_l`.
+            toma el valor de :attr:`sensor_l`.
         d_right : float, opcional
             Estímulo de evasión del lado derecho, por defecto
-            toma el valor de `sensor_r`.
+            toma el valor de attr:`sensor_r`.
 
         Returns
         -------
@@ -140,17 +156,17 @@ class BraitModel(object):
         r"""Obtiene la respuesta de evasión usando el algoritmo del vehículo 3a. 
 
         La respuesta se da en forma de velocidad lineal y
-        angular en los rangos definidos por `V_MIN`, `V_MAX`
-        y `W_MAX`.
+        angular en los rangos definidos por :attr:`V_MIN`,
+        :attr:`V_MAX` y :attr:`W_MAX`.
         
         Parameters
         ----------
         d_left : float, opcional
             Estímulo de evasión del lado izquierdo, por defecto
-            toma el valor de `sensor_l`.
+            toma el valor de :attr:`sensor_l`.
         d_right : float, opcional
             Estímulo de evasión del lado derecho, por defecto
-            toma el valor de `sensor_r`.
+            toma el valor de :attr:`sensor_r`.
 
         Returns
         -------
@@ -186,17 +202,17 @@ class BraitModel(object):
         3a para seguimiento.
 
         La respuesta se da en forma de velocidad lineal y
-        angular en los rangos definidos por `V_MIN`, `V_MAX`
-        y `W_MAX`.
+        angular en los rangos definidos por :attr:`vmin`,
+        :attr:`V_MAX` y :attr:`W_MAX`.
         
         Parameters
         ----------
         d_left : float, opcional
             Estímulo de evasión del lado izquierdo, por defecto
-            toma el valor de `sensor_l`.
+            toma el valor de :attr:`sensor_l`.
         d_right : float, opcional
             Estímulo de evasión del lado derecho, por defecto
-            toma el valor de `sensor_r`.
+            toma el valor de :attr:`sensor_r`.
 
         Returns
         -------
@@ -280,17 +296,17 @@ class BraitModel(object):
         2b para seguimiento.
 
         La respuesta se da en forma de velocidad lineal y
-        angular en los rangos definidos por `V_MIN`, `V_MAX`
-        y `W_MAX`.
+        angular en los rangos definidos por :attr:`V_MIN`,
+        :attr:`V_MAX` y :attr:`W_MAX`.
         
         Parameters
         ----------
         d_left : float, opcional
             Estímulo de evasión del lado izquierdo, por defecto
-            toma el valor de `sensor_l`.
+            toma el valor de :attr:`sensor_l`.
         d_right : float, opcional
             Estímulo de evasión del lado derecho, por defecto
-            toma el valor de `sensor_r`.
+            toma el valor de :attr:`sensor_r`.
 
         Returns
         -------
@@ -298,6 +314,7 @@ class BraitModel(object):
             Velocidad lineal de respuesta.
         w_rob : float
             Velocidad angular de respuesta (rad/s).
+
 
         .. warning::
             Debe haberse definido un punto objetivo antes de
@@ -417,10 +434,10 @@ class BraitModel(object):
         r"""Procesa las lecturas de los sensores para la
         detección de obstáculos.
 
-        Actualiza los valores de `sensor_r` y `sensor_l` a partir
-        de las lecturas de los sensores. El comportamiento
-        dependerá del atributo de clase `s_mode` y el rango de
-        visión `alpha`.
+        Actualiza los valores de :attr:`sensor_r` y
+        :attr:`sensor_l` a partir de las lecturas de los
+        sensores. El comportamiento dependerá del atributo de
+        clase :attr:`s_mode` y el rango de visión :attr:`ALPHA`.
 
         Parameters
         ----------
@@ -431,6 +448,14 @@ class BraitModel(object):
             metros y :math:`\theta` en radianes. Solo se toman
             en cuenta puntos tal que
             :math:`\theta\in [-\alpha,\alpha]`.
+        
+        Raises
+        ------
+        TypeError
+            Si ``sensor_readings`` no es de tipo
+            ``numpy.ndarray``.
+        ValueError
+            Si ``sensor_readings`` es de dimensión (2,N).
 
         Note
         -----
@@ -451,7 +476,8 @@ class BraitModel(object):
             de distancia dentro del rango. Además se define un
             número mínimo de puntos por rango. Si hay menos de
             esta cantidad, se agregan puntos con el máximo valor
-            de distancia `D_MAX` antes de calcular el promedio.
+            de distancia :attr:`D_MAX` antes de calcular el
+            promedio.
 
         """
 

@@ -1,4 +1,12 @@
 #! /usr/bin/python
+# coding=utf8
+
+r"""
+
+Este módulo define el controlador para evasión mediante el
+algoritmo VFH, y constantes asociadas.
+
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,36 +21,80 @@ import copy
 
 # Size of the full Grid
 GRID_SIZE = 100
+r"""int: Tamaño de la cuadrícula de certeza.
+"""
 
 # Resolution of each cell (in m)
 RESOLUTION = np.float_(0.05)
+r"""float: Resolución de cada celda (en m).
+"""
 
 # Size of the active window that
 # travels with the robot
 WINDOW_SIZE = 15
+r"""int: Tamaño de la ventana activa.
+
+.. warning::
+    La ventana activa debe tener un número impar de celdas.
+"""
 assert WINDOW_SIZE%2 == 1, "Window should have an odd number of cells for better results"
+
 WINDOW_CENTER = WINDOW_SIZE/2
+r"""int: Índice de la celda central en la ventana activa.
+
+Se define automáticamente a partir de ``WINDOW_SIZE``.
+"""
 
 # Size of each polar sector
 # in the polar histogram (in degrees)
 ALPHA = 5
+r"""int: Tamaño de cada sector del histograma polar (en grados).
+
+.. warning::
+    ``ALPHA`` debe ser un divisor de 360.
+"""
 if np.mod(360, ALPHA) != 0:
     raise ValueError("Alpha must define an int amount of sectors")
+
 HIST_SIZE = 360/ALPHA
+r"""int: Cantidad de sectores en el histograma polar.
+Se define automáticamente a partir de ``ALPHA``.
+"""
 
 # Valley/Peak threshold
 THRESH = 20000.0
+r"""float: Valor de umbral para valles y picos.
+"""
+
 WIDE_V = HIST_SIZE/4
+r"""int: Tamaño límite de un valle ancho y angosto.
+"""
 V_MAX = 0.0628
+r"""float: Velocidad máxima del robot (m/s).
+"""
+
 V_MIN = 0.00628
+r"""float: Velocidad mínima del robot (m/s).
+"""
+
 OMEGA_MAX = 1.256
+r"""float: Velocidad angular máxima del robot (rad/s)
+"""
 
 # Constants for virtual vector magnitude calculations
 # D_max^2 = 2*(ws-1/2)^2
 # A - B*D_max^2 = 1
 D_max2 = np.square(WINDOW_SIZE-1)/2.0
 B = np.float_(1.0)
+r"""float: Constante :math:`b` de la ecuación de la magnitud del
+vector de obstáculos.
+"""
+
 A = np.float_(1+B*D_max2)
+r"""float: Constante :math:`a` de la ecuación de la magnitud del
+vector de obstáculos. Se define a partir de ``B`` de modo que
+se cumpla :math:`a - b\cdot d_{max}^2 = 1`.
+"""
 
 # Active window array indexes
 MAG = 0
@@ -54,6 +106,67 @@ DIST2 = 2
 ########################################
 
 class VFHModel:
+    r"""Clase que define el controlador para evasión mediante
+    el algoritmo VFH.
+
+    Attributes
+    ----------
+    obstacle_grid : ndarray of short
+        La cuadrícula de certeza. Cada celda tiene un valor entre
+        0 y 20 que indica que tan probable es que haya un
+        obstáculo ocupando la celda.
+
+    active_window : ndarray of float
+        La ventana activa que se mueve con el robot. Cada celda
+        contiene tres valores: la magnitud del vector de
+        obstaculos :math:`m_{i,j}`, la dirección del vector
+        :math:`\beta_{i,j}`, y la distancia al robot
+        :math:`d_{i,j}`.
+
+    polar_hist : ndarray of float
+        El histograma polar. Indica la densidad de obstáculos
+        en cada sector alrededor de la vecindad del robot.
+
+    filt_polar_hist : ndarray of float
+        El histograma polar filtrado. Se construye a aplicando
+        un filtro al histograma polar.
+
+    valleys : list of 2-tuples
+        Contiene una lista de los valles en el histograma polar.
+        Cada es un par :math:`(s_1,s_2)`, donde :math:`s_1` es
+        el sector donde inicia y :math:`s_2` donde termina, en
+        sentido antihorario.
+
+    x_0 : float
+        Posición del robot sobre el eje :math:`x`.
+    y_0 : float
+        Posición del robot sobre el eje :math:`y`.
+    cita : float
+        Orientación del robot resepecto el eje :math:`z`.
+
+    i_0 : float
+        Índice de la celda que ocupa el robot sobre la cuadrícula
+        de certeza en el eje :math:`x`.
+    j_0 : float
+        Índice de la celda que ocupa el robot sobre la cuadrícula
+        de certeza en el eje :math:`y`.
+    k_0 : float
+        Sector en el histrograma polar de la dirección del robot
+        resepecto el eje :math:`z`.
+
+    target : tuple
+        Punto :math:`\left(x,\:y\right)` objetivo o ``None`` si
+        no se está siguiendo una trayectoria.
+
+    Notes
+    -----
+        Aquí vendrán algunas notas de uso.
+
+    Examples
+    --------
+        Aquí vendrán algunos ejemplos de uso.
+
+    """
 
     def __init__(self):
 
@@ -110,6 +223,31 @@ class VFHModel:
         self.target = None
 
     def update_position(self, x, y, cita):
+        r"""Actualiza la posición del robot.
+
+        Parameters
+        ----------
+        x : float
+            Posición absoluta del robot sobre el eje :math:`x`.
+        y : float
+            Posición absoluta del robot sobre el eje :math:`y`.
+        cita : float
+            Orientación del robot resepecto el eje :math:`z`
+            en grados.
+
+        Notes
+        -----
+
+        Modifica los siguientes atributos de clase:
+         * :attr:`x_0`
+         * :attr:`y_0`
+         * :attr:`cita`
+         * :attr:`i_0`
+         * :attr:`j_0`
+         * :attr:`k_0`
+
+        """
+
         self.x_0 = x
         self.y_0 = y
         self.cita = cita if cita >= 0 else cita + 360
@@ -119,19 +257,86 @@ class VFHModel:
         self.k_0 = int(self.cita / ALPHA)%HIST_SIZE
 
     def set_target(self, x=None, y=None):
+        r"""Define el punto objetivo o deshabilita el seguimiento
+        de trayectorias.
+
+        Define un punto objetivo :math:`(x,y)` para la evasión
+        con seguimiento de trayectorias, o deshabilita el 
+        seguimiento si el método es invocado sin parámetros.
+
+        Parameters
+        ----------
+        x : float, opcional
+            Posición absoluta del robot sobre el eje :math:`x`.
+        y : float, opcional
+            Posición absoluta del robot sobre el eje :math:`y`.
+
+        Returns
+        -------
+        int
+            Retorna 1 si se estableció un punto objetivo o 0
+            si inhabilitó el seguimiento.
+
+        Raises
+        ------
+        ValueError
+            Si el objetivo dado se sale de la cuadrícula de
+            certeza.
+
+        Notes
+        -----
+
+        Modifica los siguientes atributos de clase:
+         * :attr:`target`
+
+        """
         if x != None and y != None:
             if x >= 0 and y >= 0 and \
                     x < GRID_SIZE*RESOLUTION and \
                     y < GRID_SIZE*RESOLUTION:
                 self.target = (x,y)
-                return 0
+                return 1
             else:
                 raise ValueError("Tried to set the target ({:d},{:d}) outside the obstacle grid".format(x,y))
         else:
             self.target = None
-            return -1
+            return 0
 
     def update_obstacle_density(self, sensor_readings):
+        r"""Actualiza la cuadrícula de certeza a partir de las
+        lecturas de un sensor.
+
+        Para cada lectura aumenta el valor de una única celda
+        en 1, hasta un máximo de 20.
+
+        Parameters
+        ----------
+        sensor_readings : ndarray
+            Una estructura de datos tipo ``numpy.ndarray`` que
+            contiene las lecturas de un sensor de distancias.
+            Debe ser un arreglo de dimensiones
+            :math:`(n\times 2)` para :math:`n` puntos o
+            lecturas, donde cada par representa una coordenada
+            polar :math:`(r,\theta)` respecto al marco de
+            referencia del robot.
+
+        Raises
+        ------
+        TypeError
+            Si ``sensor_readings`` no es de tipo
+            ``numpy.ndarray``.
+        ValueError
+            Si ``sensor_readings`` no tiene las dimensiones
+            correctas.
+
+        Notes
+        -----
+        Las coordenadas deben ser dadas en metros y radianes.
+
+        Modifica los siguientes atributos de clase:
+         * :attr:`obstacle_grid`
+
+        """
         # Receives a numpy array of (r, theta) data points #
         # r in meters, theta in radians
         # 0,0 means no reading
@@ -159,6 +364,18 @@ class VFHModel:
         return self.obstacle_grid[i_window:i_max, j_window:j_max]
 
     def update_active_window(self):
+        r"""Calcula la magnitud de los vectores de obstáculo para
+        las celdas de la ventana activa.
+
+        El cálculo se hace a partir de los datos guardados en la
+        :attr:`cuadrícula de certeza<obstacle_grid>`.
+
+        Notes
+        -----
+        Modifica los siguientes atributos de clase:
+         * :attr:`active_window`
+
+        """
 
         i_window = self.i_0 - (WINDOW_CENTER)
         j_window = self.j_0 - (WINDOW_CENTER)
@@ -180,6 +397,17 @@ class VFHModel:
         #return self.active_window
 
     def update_polar_histogram(self):
+        r"""Actualiza el histograma polar de obstáculos.
+
+        El cálculo se hace a partir de los vectores de obstáculo
+        guardados en la :attr:`ventana activa<active_window>`.
+
+        Notes
+        -----
+        Modifica los siguientes atributos de clase:
+         * :attr:`polar_hist`
+
+        """
 
         for i in xrange(HIST_SIZE):
             self.polar_hist[i] = 0
@@ -195,6 +423,14 @@ class VFHModel:
         #return self.polar_hist
 
     def update_filtered_polar_histogram(self):
+        r"""Calcula el histograma polar filtrado a partir de el
+        :attr:`histograma polar<polar_hist>`.
+
+        Notes
+        -----
+        Modifica los siguientes atributos de clase:
+         * :attr:`filt_polar_hist`
+        """
 
         ## Amount of adyacent sectors to filter
         L = 5
@@ -204,6 +440,22 @@ class VFHModel:
             self.filt_polar_hist[i] = np.sum([c*self.polar_hist[k] for c, k in coef])/(2*L+1)
 
     def find_valleys(self):
+        r"""Analiza el histograma polar filtrado y determina los
+        valles candidatos.
+
+        Los valles se obtienen a partir del
+        :attr:`histograma polar filtrado<filt_polar_hist>` y 
+        el :const:`valor de umbral<THRESH>`.
+
+        Returns
+        -------
+        int
+             * ``-1`` si no se encuentra ningún sector con un valor
+               mayor a :const:`THRESH` en el hisotgrama filtrado.
+             * ``0`` de lo contrario.
+
+        """
+
         start = None
         for x in xrange(HIST_SIZE):
             if self.filt_polar_hist[x] > THRESH:
@@ -235,6 +487,25 @@ class VFHModel:
         return 0
 
     def calculate_steering_dir(self):
+        r"""Calcula la dirección de movimiento para la evasión.
+
+        El cálculo de la dirección para el robot se hace a
+        partir de los valles candidato, la orientación actual
+        y el objetivo. Si no hay objetivo, se toma la dirección
+        actual de movimiento como objetivo.
+
+        Returns
+        -------
+        new_dir : float
+            La dirección del movimiento, dada en grados en el
+            rango :math:`[0°,\:360°[` .
+
+        Raises
+        ------
+        Exception
+            Si :attr:`valleys` está vacío.
+        
+        """
 
         # Set the target sector. If there is a target point
         # calculate the sector from that, else it's the 
@@ -328,6 +599,28 @@ class VFHModel:
         return new_dir
 
     def calculate_speed(self, omega=0):
+        r"""Calcula la velocidad del robot.
+
+        Calcula la velocidad a partir de la densidad de 
+        obstáculos en la dirección actual del movimiento.
+        El robot se mueve más despacio entre mayor sea la 
+        densidad.
+
+        Opcionalmente recibe la velocidad angular del robot como
+        parámetro. En este caso, se hace una reducción adicional
+        de la velocidad dependiendo del valor de ``omega``
+        en comparación a :const:`OMEGA_MAX`.
+
+        Parameters
+        ----------
+        omega : float, opcional
+            Velocidad angular del robot (rad/s).
+
+        Returns
+        -------
+        V : float
+            Velocidad lineal deseada del robot (m/s).
+        """
 
         # Omega in [rad/s]
         # Obstacle density in the current direction of travel
