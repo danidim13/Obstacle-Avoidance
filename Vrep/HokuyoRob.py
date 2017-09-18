@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import sys
 import platform
@@ -107,9 +108,9 @@ def runSim(argc, argv):
         #robot = vfh.VFHModel()
         print "Iniciando el robot!"
 
-        #modo = DR.M_VFH
+        modo = DR.M_VFH
         #modo = DR.M_BRAIT
-        modo = DR.M_VFHP
+        #modo = DR.M_VFHP
 
         data_filename = "sim_data_{:d}.csv".format(modo)
         data_dump = open(data_filename, 'w')
@@ -130,7 +131,7 @@ def runSim(argc, argv):
         X_TRAS = 2.5
         Y_TRAS = 2.5
         G_TRAS = 0.0
-        robot.set_initial_pos(X_TRAS, Y_TRAS,0)
+        robot.set_initial_pos(X_TRAS, Y_TRAS,np.pi/2)
 
         # Sin objetivo
         #target = None
@@ -284,7 +285,7 @@ def runSim(argc, argv):
                     d = np.sqrt(np.square(target[0] - x) + np.square(target[1] - y))
                     csv_line = "{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n".format(now,x,y,gamma,d)
                     data_dump.write(csv_line)
-                    if d < 0.010:
+                    if d < 0.030:
                         print "Robot has reached its target!"
                         vrep.simxSetJointTargetVelocity(clientID, leftMotorHandle, 0, vrep.simx_opmode_oneshot)
                         vrep.simxSetJointTargetVelocity(clientID, rightMotorHandle, 0, vrep.simx_opmode_oneshot)
@@ -331,16 +332,19 @@ def runSim(argc, argv):
             x = [vfh.ALPHA*x for x in range(len(robot.model.filt_polar_hist))]
             i = [a for a in range(len(robot.model.filt_polar_hist))]
             plt.bar(x, robot.model.polar_hist, 4.0, 0, color='r')
+            plt.xlabel(u"Ángulo [grados]")
             plt.title("Histograma polar")
 
             plt.figure(2)
             plt.bar(x, robot.model.filt_polar_hist, 4.0, 0, color='b')
+            plt.xlabel(u"Ángulo [grados]")
             plt.title("Histograma polar filtrado")
 
             plt.figure(3)
             plt.pcolor(robot.model._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
             plt.xlabel("X")
             plt.ylabel("Y", rotation='horizontal')
+            plt.title("Ventana activa")
             plt.show()
 
         if robot.c_type == DR.M_BRAIT:
@@ -370,19 +374,19 @@ def runSim(argc, argv):
             print "histograma polar"
             plt.figure(2)
             plt.bar(x, robot.model.polar_hist, 4.0, 0, color='b')
-            plt.xlabel("Angulo [grados]")
+            plt.xlabel(u"Ángulo [grados]")
             plt.title("Histograma polar")
 
             print "histograma polar binario"
             plt.figure(3)
             plt.bar(x, robot.model.bin_polar_hist, 4.0, 0, color='b')
-            plt.xlabel("Angulo [grados]")
+            plt.xlabel(u"Ángulo [grados]")
             plt.title("Histograma polar binario")
 
             print "histograma polar mascarado"
             plt.figure(4)
             plt.bar(x, robot.model.masked_polar_hist, 4.0, 0, color='b')
-            plt.xlabel("Angulo [grados]")
+            plt.xlabel(u"Ángulo [grados]")
             plt.title("Histograma polar mascarado")
 
             plt.show()
