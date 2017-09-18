@@ -84,7 +84,7 @@ class BraitModel(object):
         self.x = 0.
         self.y = 0.
         self.gamma = 0.
-        self.radius = 0.02
+        self.radius = 0.035
 
         self.alpha = alpha
         # Distancia minima y maxima de vision
@@ -290,7 +290,7 @@ class BraitModel(object):
         #return v_left, v_right
         return v_rob, w_rob
 
-    def Mixed3a2b(self, d_left, d_right):
+    def Mixed3a2b(self, d_left=None, d_right=None):
         r"""Obtiene la respuesta conjunta de evasión y
         seguimiento, usando el algoritmo 3a para evasión y el
         2b para seguimiento.
@@ -343,12 +343,14 @@ class BraitModel(object):
             left_d2 = left_d2 - d_extra
             right_d2 = right_d2 - d_extra
             print "Triming distance by %.2f" % d_extra
+            print "left = %.2f, right = %2f, t=%.2f" % (left_d2, right_d2, thresh)
 
         left_s  = (self.radius)/left_d2
         right_s = (self.radius)/right_d2
+        print "left = %.2f, right = %2f" % (left_s, right_s)
 
-        close_min = 0.5
-        close_max = 1.3
+        close_min = 0.25
+        close_max = 0.75
 
         v_left1 = MapStimulus(right_s, close_min, close_max, 0.0, 1.0)
         v_right1 = MapStimulus(left_s, close_min, close_max, 0.0, 1.0)
@@ -365,7 +367,7 @@ class BraitModel(object):
         v_left2 = MapStimulus(d_left, self.D_MIN, self.D_MAX, 1.0, 0.0)
         v_right2 = MapStimulus(d_right, self.D_MIN, self.D_MAX, 1.0, 0.0)
 
-        ratio = 0.2
+        ratio = 0.8
         v_left = (v_left1*ratio + v_left2*(1-ratio))
         v_right = (v_right1*ratio + v_right2*(1-ratio))
         print "v_left = %.3f" % v_left
@@ -581,7 +583,7 @@ def MapStimulus(s, s_min, s_max, r_min, r_max):
         return (m*s) + b
     else:
         return r_min
-		
+
 def main():
 
     robot = BraitModel(s_mode=SMODE_FULL)

@@ -20,12 +20,12 @@ import copy
 ###                                 ####
 
 # Size of the full Grid
-GRID_SIZE = 100
+GRID_SIZE = 125
 r"""int: Tamaño de la cuadrícula de certeza.
 """
 
 # Resolution of each cell (in m)
-RESOLUTION = np.float_(0.05)
+RESOLUTION = np.float_(0.04)
 r"""float: Resolución de cada celda (en m).
 """
 
@@ -511,8 +511,10 @@ class VFHModel:
         # calculate the sector from that, else it's the 
         # current orientation
         k_t = None
+	dir_t = None
         if self.target == None:
             k_t = self.k_0
+	    dir_t = self.cita
         else:
             dx = self.target[0] - self.x_0
             dy = self.target[1] - self.y_0
@@ -520,6 +522,7 @@ class VFHModel:
             angle = angle + 360 if angle < 0 else angle
             print "target dir is %.1f" % angle
             k_t = int(angle / ALPHA)%HIST_SIZE
+	    dir_t = angle
 
         # First we determine which valley is closest to the
         # target or current robot orientation
@@ -577,7 +580,7 @@ class VFHModel:
 
                 if k_inside:
                     print "Maintining current direction"
-                    new_dir = ALPHA * k_t
+                    new_dir = dir_t
                 else:
                     print "Current direction is blocked!"
 

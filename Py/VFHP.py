@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 ###                                 ####
 
 # Size of the full Grid
-GRID_SIZE = 250
+GRID_SIZE = 125
 r"""int: Tamaño de la cuadrícula de certeza.
 """
 
@@ -30,7 +30,7 @@ r"""int: Valor máximo de certeza.
 """
 
 # Resolution of each cell (in m)
-RESOLUTION = np.float_(0.02)
+RESOLUTION = np.float_(0.04)
 r"""float: Resolución de cada celda (en m).
 """
 
