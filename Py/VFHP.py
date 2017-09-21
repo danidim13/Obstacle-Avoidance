@@ -299,9 +299,9 @@ class VFHPModel:
         Parameters
         ----------
         x : float, opcional
-            Posición absoluta del robot sobre el eje :math:`x`.
+            Posición absoluta del objetivo sobre el eje :math:`x`.
         y : float, opcional
-            Posición absoluta del robot sobre el eje :math:`y`.
+            Posición absoluta del objetivo sobre el eje :math:`y`.
 
         Returns
         -------

@@ -1,3 +1,6 @@
+
+# coding=utf8
+
 import sys
 import numpy as np
 import PID
@@ -5,15 +8,93 @@ import VFH
 import VFHP
 import Braitenberg as bra
 
+r"""
+.. ::module DiffRobot
+
+Este módulo define un modelo para el robot diferencial, que sirve de
+interfaz entre los controladores de evasión y los motores.
+
+"""
+
 TARGET_X = 2.5
 TARGET_Y = 3.5
 
 M_VFH = 0
+"""int: Modo de operación con VFH.
+"""
+
 M_BRAIT = 1
+"""int: Modo de operación con vehículo de Braitenberg.
+"""
+
 M_VFHP = 2
+"""int: Modo de operación con VFH+.
+"""
 
 # Robot differencial
 class DiffRobot(object):
+    r"""Clase para el modelo del robot diferencial.
+
+    Define un objeto que representa el robot diferencial, y permite
+    abstraer la cinemática (comandos para los motores) a comandos
+    de alto nivel.
+
+    Parameters
+    ----------
+    r : float, opcional
+        Radio de las ruedas (m).
+    b : float, opcional
+        Distancia entre las ruedas (m).
+    wm_max : float, opcional
+        Máxima velocidad angular de los motores (rad/s).
+    c_type : {:const:`M_VFH`, :const:`M_BRAIT`, :const:`M_VFHP`}, opcional
+        Tipo de controlador para la evasión de obstáculos.
+
+    Attributes
+    ----------
+    r : float
+        Radio de las ruedas (m).
+    b : float
+        Distancia entre las ruedas (m).
+    wm_max : float
+        Máxima velocidad angular del motor (rad/s).
+    omega_max : float
+        Máxima velocidad angular del robot (velocidad de giro, en rad/s).
+    v_max : float
+        Máxima velocidad lineal del robot (m/s).
+    model : Controlador
+        Una instacia de un controlador para evasión, se escoge a partir de ``c_type``.
+
+    v_ref : float
+        Valor de velocidad lineal de referencia para el movimiento del robot, definido por
+        el controlador :attr:`model`.
+    w_ref : float
+        Valor de velocidad angular de referencia para el movimiento del robot (rad/s). Definido por
+        el controlador :attr:`model`.
+    w_prev : float
+        Velocidad angular anterior (rad/s). Usado por el controlador VFH para calcular
+        la velocidad angular actual.
+
+    cita : float
+        Dirección actual del robot (rad).
+    cita_prev : float
+        Dirección anterior del robot (rad), usado por el controlador VFH para calcular la
+        velocidad angular actual.
+    cita_ref : float
+        Dirección de referencia para el movimiento del robot (rad). Se usa en el caso de los
+        controladores VFH y VFH+, luego un PID determina la velocidad angular requerida
+        :attr:`w_ref` para alcanzar esta dirección.
+
+    left_motor : float
+        Velocidad angular del motor izquierdo (rad/s).
+    right_motor : float
+        Velocidad angular del motor derecho (rad/s).
+
+    angle_controller : :class:`PID.PID`
+        Un controlador PID que se usa con los algoritmos VFH y VFH+ para determinar la
+        velocidad angular de referencia :attr:`w_ref` a partir de la dirección de referencia
+        :attr:`cita_ref`.
+    """
 
     def __init__(self, r=0.02, b=0.05, wm_max=6.28, c_type = 0):
         # r = radio de las ruedas [m]
@@ -69,6 +150,27 @@ class DiffRobot(object):
 
     # Todas las mediciones se dan en el sistema metrico [m, rad]
     def set_initial_pos(self, x, y, cita):
+        r"""Define la postura inicial del robot.
+
+        Indica las condiciones iniciales :math:`(x,\; y, \; \theta)` del robot.
+
+        Parameters
+        ----------
+        x : float
+            Posición absoluta del robot sobre el eje :math:`x`
+            en metros.
+        y : float
+            Posición absoluta del robot sobre el eje :math:`y`
+            en metros.
+        cita : float
+            Orientación del robot resepecto el eje :math:`z`
+            en radianes.
+        
+        Notes
+        -----
+        Modifica el estado interno del controlador :attr:`model`.
+        
+        """
         
         if self.c_type == M_VFH:
             self.set_initial_pos_VFH(x,y,cita)
@@ -100,6 +202,23 @@ class DiffRobot(object):
         self.angle_controller.setRef(cita)
 
     def set_target(self, x, y):
+        r"""Indica un punto objetivo.
+
+        Habilita el seguimiento de trayectorias e indica
+        al robot el punto al cual debe dirigirse.
+
+        Parameters
+        ----------
+        x : float
+            Posición absoluta del objetivo sobre el eje :math:`x`.
+        y : float
+            Posición absoluta del objetivo sobre el eje :math:`y`.
+
+        Notes
+        -----
+        Modifica el estado interno del controlador :attr:`model`.
+        """
+
         if self.c_type == M_VFH:
             self.model.set_target(x,y)
         elif self.c_type == M_BRAIT:
@@ -110,6 +229,13 @@ class DiffRobot(object):
             print "ERROR: no control type defined!"
 
     def unset_target(self):
+        r"""Dehabilita el seguimiento de trayectorias.
+
+
+        Notes
+        -----
+        Modifica el estado interno del controlador :attr:`model`.
+        """
         if self.c_type == M_VFH:
             self.model.set_target()
         elif self.c_type == M_BRAIT:
@@ -120,6 +246,26 @@ class DiffRobot(object):
             print "ERROR: no control type defined!"
 
     def update_pos(self, x, y, cita, delta_t):
+        r"""Actualiza la posición del robot.
+
+        Parameters
+        ----------
+        x : float
+            Posición absoluta del robot sobre el eje :math:`x`.
+        y : float
+            Posición absoluta del robot sobre el eje :math:`y`.
+        cita : float
+            Orientación del robot resepecto el eje :math:`z`
+            en radianes.
+        delta_t : float
+            El tiempo transcurrido desde la última actualización.
+            
+        Notes
+        -----
+        Modifica el estado interno del controlador :attr:`model`,
+        además del atributo :attr:`cita`. En el caso de VFH y VFH+
+        realiza un paso de integración del PID.
+        """
         
         if self.c_type == M_VFH:
             self.update_pos_VFH(x,y,cita,delta_t)
@@ -143,6 +289,7 @@ class DiffRobot(object):
         print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
     def update_pos_Brait(self, x, y, cita, delta_t):
+        self.cita = cita
         self.model.UpdatePos(x, y, cita)
 
     def update_pos_VFHP(self, x, y, cita, delta_t):
@@ -155,6 +302,23 @@ class DiffRobot(object):
         print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
     def update_readings(self, data):
+        """Procesa las lecturas de un sensor.
+
+        Actualiza el estado del controlador :attr:`model`
+        con las lecturas de un sensor de distancia.
+
+        Parameters
+        ----------
+        data : ndarray
+            Una estructura de datos tipo ``numpy.ndarray`` que
+            contiene las lecturas de un sensor de distancias.
+            Debe ser un arreglo de dimensiones
+            :math:`(n\times 2)` para :math:`n` puntos o
+            lecturas, donde cada par representa una coordenada
+            polar :math:`(r,\theta)` respecto al marco de
+            referencia del robot, dada en metros y radianes.
+
+        """
         if self.c_type == M_VFH:
             self.update_readings_VFH(data)
         elif self.c_type == M_BRAIT:
@@ -183,6 +347,25 @@ class DiffRobot(object):
         pass
 
     def update_target(self):
+        r"""Aplica la acción de control para evasión de obstáculos.
+
+        Actualiza el estado interno de :attr:`model` para obtener
+        la acción de control :math:`(v_{ref}, w_{ref})`. Luego,
+        la convierte en acciones individuales sobre cada motor
+        mediante el método :meth:`setMotorSpeed`.
+
+        Notes
+        -----
+        Modifica los siguientes atributos de clase:
+
+        .. hlist::
+
+            * :attr:`v_ref`
+            * :attr:`cita_ref`
+            * :attr:`w_ref`
+            * :attr:`left_motor`
+            * :attr:`right_motor`
+        """
         if self.c_type == M_VFH:
             self.update_target_VFH()
         elif self.c_type == M_BRAIT:
