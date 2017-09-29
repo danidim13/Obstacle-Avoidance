@@ -3,20 +3,22 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Obstacle Avoidance's documentation!
-==============================================
+Bienvenido a la documentación de Obstacle Avoidance!
+====================================================
 
 .. toctree::
    :maxdepth: 3
-   :caption: Contents:
+   :caption: Contenidos:
 
    modules
 
 
 
-Indices and tables
-==================
+Índices
+=======
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`
+
+.. * :ref:`search`
+

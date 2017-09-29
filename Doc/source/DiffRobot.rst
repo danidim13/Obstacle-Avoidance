@@ -12,8 +12,8 @@ Clase DiffModel
 
 .. autoclass:: DiffModel
 
-Métodos de clase
-^^^^^^^^^^^^^^^^
+Métodos
+^^^^^^^
 
 .. autosummary::
     :toctree: DiffModel
