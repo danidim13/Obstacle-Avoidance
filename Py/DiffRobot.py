@@ -173,16 +173,16 @@ class DiffModel(object):
         """
         
         if self.c_type == M_VFH:
-            self.set_initial_pos_VFH(x,y,cita)
+            self._set_initial_pos_VFH(x,y,cita)
         elif self.c_type == M_BRAIT:
-            self.set_initial_pos_Brait(x,y,cita)
+            self._set_initial_pos_Brait(x,y,cita)
         elif self.c_type == M_VFHP:
-            self.set_initial_pos_VFHP(x,y,cita)
+            self._set_initial_pos_VFHP(x,y,cita)
         else:
             print "ERROR: no control type defined!"
 
 
-    def set_initial_pos_VFH(self, x, y, cita):
+    def _set_initial_pos_VFH(self, x, y, cita):
         self.cita = cita
         self.cita_prev = cita
         self.w_prev = 0.0
@@ -190,10 +190,10 @@ class DiffModel(object):
         self.angle_controller.setInput(cita)
         self.angle_controller.setRef(cita)
 
-    def set_initial_pos_Brait(self, x, y, cita):
+    def _set_initial_pos_Brait(self, x, y, cita):
         self.model.UpdatePos(x, y, cita)
         
-    def set_initial_pos_VFHP(self, x, y, cita):
+    def _set_initial_pos_VFHP(self, x, y, cita):
         self.cita = cita
         #self.cita_prev = cita
         #self.w_prev = 0.0
@@ -268,15 +268,15 @@ class DiffModel(object):
         """
         
         if self.c_type == M_VFH:
-            self.update_pos_VFH(x,y,cita,delta_t)
+            self._update_pos_VFH(x,y,cita,delta_t)
         elif self.c_type == M_BRAIT:
-            self.update_pos_Brait(x,y,cita,delta_t)
+            self._update_pos_Brait(x,y,cita,delta_t)
         elif self.c_type == M_VFHP:
-            self.update_pos_VFHP(x,y,cita,delta_t)
+            self._update_pos_VFHP(x,y,cita,delta_t)
         else:
             print "ERROR: no control type defined!"
 
-    def update_pos_VFH(self, x, y, cita, delta_t):
+    def _update_pos_VFH(self, x, y, cita, delta_t):
 
         self.cita_prev = self.cita
         self.cita = cita
@@ -288,11 +288,11 @@ class DiffModel(object):
         self.w_ref = self.angle_controller.timestep(delta_t)
         print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
-    def update_pos_Brait(self, x, y, cita, delta_t):
+    def _update_pos_Brait(self, x, y, cita, delta_t):
         self.cita = cita
         self.model.UpdatePos(x, y, cita)
 
-    def update_pos_VFHP(self, x, y, cita, delta_t):
+    def _update_pos_VFHP(self, x, y, cita, delta_t):
 
         self.cita = cita
         self.model.update_position(x, y, np.degrees(cita))
@@ -320,25 +320,25 @@ class DiffModel(object):
 
         """
         if self.c_type == M_VFH:
-            self.update_readings_VFH(data)
+            self._update_readings_VFH(data)
         elif self.c_type == M_BRAIT:
-            self.update_readings_Brait(data)
+            self._update_readings_Brait(data)
         elif self.c_type == M_VFHP:
-            self.update_readings_VFHP(data)
+            self._update_readings_VFHP(data)
         else:
             print "ERROR: no control type defined!"
 
-    def update_readings_VFH(self, data):
+    def _update_readings_VFH(self, data):
         try:
             self.model.update_obstacle_density(data)
         except Exception as e:
             print "Exception caught during sensor update:"
             print e
 
-    def update_readings_Brait(self, data):
+    def _update_readings_Brait(self, data):
         self.model.UpdateSensors(data)
 
-    def update_readings_VFHP(self, data):
+    def _update_readings_VFHP(self, data):
         try:
             self.model.update_obstacle_density(data)
         except Exception as e:
@@ -367,15 +367,15 @@ class DiffModel(object):
             * :attr:`right_motor`
         """
         if self.c_type == M_VFH:
-            self.update_target_VFH()
+            self._update_target_VFH()
         elif self.c_type == M_BRAIT:
-            self.update_target_Brait()
+            self._update_target_Brait()
         elif self.c_type == M_VFHP:
-            self.update_target_VFHP()
+            self._update_target_VFHP()
         else:
             print "ERROR: no control type defined!"
 
-    def update_target_VFH(self):
+    def _update_target_VFH(self):
         self.model.update_active_window()
         self.model.update_polar_histogram()
         self.model.update_filtered_polar_histogram()
@@ -401,7 +401,7 @@ class DiffModel(object):
         self.angle_controller.setRef(self.cita_ref)
         self.setMotorSpeed()
 
-    def update_target_Brait(self):
+    def _update_target_Brait(self):
         if self.model.target == None:
             v, w = self.model.Evade2b()
         else:
@@ -410,7 +410,7 @@ class DiffModel(object):
         self.w_ref = w
         self.setMotorSpeed()
 
-    def update_target_VFHP(self):
+    def _update_target_VFHP(self):
         self.model.update_active_window()
         self.model.update_polar_histogram()
         self.model.update_bin_polar_histogram()
