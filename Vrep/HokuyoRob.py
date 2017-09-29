@@ -116,7 +116,7 @@ def runSim(argc, argv):
         data_dump = open(data_filename, 'w')
 
 
-        robot = DR.DiffRobot(c_type=modo)
+        robot = DR.DiffModel(c_type=modo)
 
         # Pista 1
         robot.set_target(2.5,3.0) 

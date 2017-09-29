@@ -6,22 +6,22 @@ DiffRobot module
     :undoc-members:
     :show-inheritance:
 
-Clase DiffRobot
+Clase DiffModel
 ---------------
 .. currentmodule:: DiffRobot
 
-.. autoclass:: DiffRobot
+.. autoclass:: DiffModel
 
 Métodos de clase
 ^^^^^^^^^^^^^^^^
 
 .. autosummary::
-    :toctree: DiffRobot
+    :toctree: DiffModel
 
-    DiffRobot.set_initial_pos
-    DiffRobot.set_target
-    DiffRobot.unset_target
-    DiffRobot.update_pos
-    DiffRobot.update_readings
-    DiffRobot.update_target
-    DiffRobot.setMotorSpeed
+    DiffModel.set_initial_pos
+    DiffModel.set_target
+    DiffModel.unset_target
+    DiffModel.update_pos
+    DiffModel.update_readings
+    DiffModel.update_target
+    DiffModel.setMotorSpeed

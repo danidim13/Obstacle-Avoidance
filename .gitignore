@@ -1,3 +1,9 @@
+# Documentacion
+Doc/build
+Doc/source/*/
+
+*.swp
+
 # Compiled Object files
 *.slo
 *.lo

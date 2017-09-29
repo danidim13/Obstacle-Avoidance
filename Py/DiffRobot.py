@@ -32,7 +32,7 @@ M_VFHP = 2
 """
 
 # Robot differencial
-class DiffRobot(object):
+class DiffModel(object):
     r"""Clase para el modelo del robot diferencial.
 
     Define un objeto que representa el robot diferencial, y permite
@@ -431,6 +431,22 @@ class DiffRobot(object):
         self.setMotorSpeed()
 
     def setMotorSpeed(self):
+        r"""Determina la velocidad de los motores.
+
+        Determina la velocidad individual que debe tener cada
+        motor (en rad/s), según el modelo cinemático inverso, para
+        que el robot alcance la velocidad lineal y angular de
+        referencia :attr:`v_ref` y :attr:`w_ref`. 
+
+        Notes
+        -----
+        Modifica los siguientes atributos de clase:
+
+        .. hlist::
+
+            * :attr:`left_motor`
+            * :attr:`right_motor`
+        """
         self.left_motor = (self.v_ref - self.b*self.w_ref)/self.r
         self.right_motor = (self.v_ref + self.b*self.w_ref)/self.r
 
@@ -450,7 +466,7 @@ def main():
     # simulamos 50 ms 
     dt = 0.5
 
-    robot = DiffRobot(c_type=M_VFHP)
+    robot = DiffModel(c_type=M_VFHP)
     robot.set_initial_pos(2.5, 2.5, 0)
     robot.update_pos(2.5,2.5,0,dt)
 
