@@ -209,13 +209,22 @@ class VFHPModel:
         Costo de la última dirección de control.
      
 
-    Notes
-    -----
-        Aquí vendrán algunas notas de uso.
 
     Examples
     --------
-        Aquí vendrán algunos ejemplos de uso.
+
+    >>> import VFHP
+    >>> pseudo_readings = np.float_([[0.3, np.radians(x)] for x in range(0,90,1)])
+    >>> R_ROB = 0.01
+    >>> robot = VFHP.VFHModel()
+    >>> robot.update_position(1.5,1.5,270.0)
+    >>> robot.update_obstacle_density(pseudo_readings)
+    >>> robot.update_active_window()
+    >>> robot.update_polar_histogram()
+    >>> robot.update_bin_polar_histogram()
+    >>> robot.update_masked_polar_hist(R_ROB,R_ROB)
+    >>> valles = robot.find_valleys()
+    >>> cita, v = robot.calculate_steering_dir(valles)
 
     """
 

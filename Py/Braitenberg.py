@@ -77,6 +77,17 @@ class BraitModel(object):
         Velocidad angular máxima del robot (se asume que es la misma en ambas direcciones).
     ALPHA : float, 
         Rango angular de visión del robot, dado en radianes.
+
+    Examples
+    --------
+    
+    >>> import Braitenberg as Brait
+    >>> robot = Brait.BraitModel(s_mode=SMODE_FULL)
+    >>> pseudo_readings = np.float_([[0.41, np.radians(x)] for x in range(-5,90,1)])
+    >>> robot.UpdateSensors(pseudo_readings)
+    >>> robot.UpdatePos(0.0, 0.0, np.pi/2)
+    >>> robot.SetTarget(0.0, 0.20)
+    >>> v, w = robot.Mixed2b3a()
     """
 
     def __init__(self, s_mode=0, d_min=0.01, d_max=0.25, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):

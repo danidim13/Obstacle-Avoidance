@@ -302,7 +302,7 @@ class DiffModel(object):
         print "PID readings: effort %f, error %f, acumulated_error %f " % (self.w_ref , self.angle_controller.error, self.angle_controller._integral)
 
     def update_readings(self, data):
-        """Procesa las lecturas de un sensor.
+        r"""Procesa las lecturas de un sensor.
 
         Actualiza el estado del controlador :attr:`model`
         con las lecturas de un sensor de distancia.
@@ -313,7 +313,7 @@ class DiffModel(object):
             Una estructura de datos tipo ``numpy.ndarray`` que
             contiene las lecturas de un sensor de distancias.
             Debe ser un arreglo de dimensiones
-            :math:`(n\times 2)` para :math:`n` puntos o
+            :math:`(n \times 2)` para :math:`n` puntos o
             lecturas, donde cada par representa una coordenada
             polar :math:`(r,\theta)` respecto al marco de
             referencia del robot, dada en metros y radianes.

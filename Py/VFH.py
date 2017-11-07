@@ -131,9 +131,9 @@ class VFHModel:
         El histograma polar filtrado. Se construye a aplicando
         un filtro al histograma polar.
 
-    valleys : list of 2-tuples
+    valleys : list of tuples
         Contiene una lista de los valles en el histograma polar.
-        Cada es un par :math:`(s_1,s_2)`, donde :math:`s_1` es
+        Cada valle es un par :math:`(s_1,s_2)`, donde :math:`s_1` es
         el sector donde inicia y :math:`s_2` donde termina, en
         sentido antihorario.
 
@@ -158,13 +158,24 @@ class VFHModel:
         Punto :math:`\left(x,\:y\right)` objetivo o ``None`` si
         no se está siguiendo una trayectoria.
 
-    Notes
-    -----
-        Aquí vendrán algunas notas de uso.
-
     Examples
     --------
-        Aquí vendrán algunos ejemplos de uso.
+    
+
+    >>> import VFH
+    >>> robot = VFH.VFHModel()
+    >>> robot.update_position(1.5,1.5,270.0)
+    >>> pseudo_readings = np.float_([[0.3, np.radians(x)] for x in range(0,90,1)])
+    >>> robot.update_obstacle_density(pseudo_readings)
+    >>> robot.update_active_window()
+    >>> robot.update_polar_histogram()
+    >>> robot.update_filtered_polar_histogram()
+    >>> robot.find_valleys()
+    >>> try:
+    >>>     cita = robot.calculate_steering_dir()
+    >>> except:
+    >>>     pass
+    >>> v = robot.calculate_speed(3.14/180)
 
     """
 
@@ -239,12 +250,15 @@ class VFHModel:
         -----
 
         Modifica los siguientes atributos de clase:
-         * :attr:`x_0`
-         * :attr:`y_0`
-         * :attr:`cita`
-         * :attr:`i_0`
-         * :attr:`j_0`
-         * :attr:`k_0`
+
+        .. hlist::
+
+            * :attr:`x_0`
+            * :attr:`y_0`
+            * :attr:`cita`
+            * :attr:`i_0`
+            * :attr:`j_0`
+            * :attr:`k_0`
 
         """
 
@@ -285,8 +299,8 @@ class VFHModel:
 
         Notes
         -----
-
         Modifica los siguientes atributos de clase:
+
          * :attr:`target`
 
         """
@@ -334,6 +348,7 @@ class VFHModel:
         Las coordenadas deben ser dadas en metros y radianes.
 
         Modifica los siguientes atributos de clase:
+
          * :attr:`obstacle_grid`
 
         """
@@ -373,6 +388,7 @@ class VFHModel:
         Notes
         -----
         Modifica los siguientes atributos de clase:
+
          * :attr:`active_window`
 
         """
@@ -405,6 +421,7 @@ class VFHModel:
         Notes
         -----
         Modifica los siguientes atributos de clase:
+
          * :attr:`polar_hist`
 
         """
@@ -429,6 +446,7 @@ class VFHModel:
         Notes
         -----
         Modifica los siguientes atributos de clase:
+
          * :attr:`filt_polar_hist`
         """
 
@@ -657,7 +675,7 @@ def main():
     
     print("Updating the obstacle grid and robot position")
 
-    robot.update_position(1.5,1.5,270.0)
+
 
 #    robot.obstacle_grid[1,6] = 1
 #    robot.obstacle_grid[1,5] = 2
