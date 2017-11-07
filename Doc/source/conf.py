@@ -20,6 +20,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Py'))
+#sys.path.insert(0, os.path.abspath('/home/daniel/Documents/UCR/XI Semestre/Proyecto/Codigo/Obstacle-Avoidance/Vrep'))
 
 
 # -- General configuration ------------------------------------------------
@@ -57,7 +58,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Obstacle Avoidance'
+project = u'Evasión de Obstáculos'
 copyright = u'2017, Daniel Diaz Molina'
 author = u'Daniel Diaz Molina'
 

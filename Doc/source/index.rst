@@ -3,8 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Bienvenido a la documentación de Obstacle Avoidance!
-====================================================
+Proyecto Eléctrico: Algoritmos de evasión de obstáculos
+=======================================================
+
+Esta es la documentación oficial del proyecto eléctrico
+`Implementación y simulación de algoritmos de evasión de
+obstáculos y seguimiento de trayectorias para un robot
+autónomo terrestre`.
+
+Se recomienda consultar las páginas
+de los módulos que implementan los 3 algoritmos desarrollados,
+ahí se incluye la información necesaria para hacer uso del
+código desarrollado.
 
 .. toctree::
    :maxdepth: 3
