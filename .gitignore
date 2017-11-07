@@ -13,6 +13,7 @@ Doc/source/*/
 # Precompiled Headers
 *.gch
 *.pch
+*.pyc
 
 # Compiled Dynamic libraries
 *.so
