@@ -31,7 +31,9 @@ class BraitModel(object):
     ----------
     s_mode : {SMODE_MIN, SMODE_AVG, SMODE_FULL}, opcional
         Modo de sensado, define la forma de obtener los estímulos a partir
-        de las lecturas de los sensores
+        de las lecturas de los sensores.
+    min_read : int, opcional
+        Mínimo número de mediciones para el modo ``SMODE_FULL``.
     d_min : float, opcional
         Distancia mínima de detección de obstáculos.
     d_max : float, opcional
@@ -65,6 +67,8 @@ class BraitModel(object):
     s_mode : {SMODE_MIN, SMODE_AVG, SMODE_FULL}, 
         Modo de sensado, define la forma de obtener los estímulos a partir
         de las lecturas de los sensores
+    MIN_READ : int
+        Mínimo número de mediciones para el modo ``SMODE_FULL``.
     D_MIN : float, 
         Distancia mínima de detección de obstáculos.
     D_MAX : float, 
@@ -90,7 +94,7 @@ class BraitModel(object):
     >>> v, w = robot.Mixed2b3a()
     """
 
-    def __init__(self, s_mode=0, d_min=0.01, d_max=0.25, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):
+    def __init__(self, s_mode=0, min_read=40, d_min=0.01, d_max=0.25, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):
         
         self.x = 0.
         self.y = 0.
@@ -110,6 +114,7 @@ class BraitModel(object):
         self.sensor_l = d_max
         self.sensor_r = d_max
         self.s_mode = s_mode
+        self.MIN_READ = min_read
 
         self.target = None
 
@@ -487,7 +492,7 @@ class BraitModel(object):
         `SMODE_FULL`
             El estímulo se define como el promedio de los valores
             de distancia dentro del rango. Además se define un
-            número mínimo de puntos por rango. Si hay menos de
+            número mínimo de puntos por rango, dado por :attr:`MIN_READ`. Si hay menos de
             esta cantidad, se agregan puntos con el máximo valor
             de distancia :attr:`D_MAX` antes de calcular el
             promedio.
@@ -535,19 +540,18 @@ class BraitModel(object):
                 self.sensor_r = sum(right)/float(len(right))
 
         elif self.s_mode == SMODE_FULL:
-            num = 40
 
             sum_l = sum(left)
-            if len(left) < num:
-                sum_l += (num-len(left))*self.D_MAX
-                self.sensor_l = sum_l/num
+            if len(left) < self.MIN_READ:
+                sum_l += (self.MIN_READ-len(left))*self.D_MAX
+                self.sensor_l = sum_l/self.MIN_READ
             else:
                 self.sensor_l = sum_l/len(left)
 
             sum_r = sum(right)
-            if len(right) < num:
-                sum_r += (num-len(right))*self.D_MAX
-                self.sensor_r = sum_r/num
+            if len(right) < self.MIN_READ:
+                sum_r += (self.MIN_READ-len(right))*self.D_MAX
+                self.sensor_r = sum_r/self.MIN_READ
             else:
                 self.sensor_r = sum_r/len(right)
 
