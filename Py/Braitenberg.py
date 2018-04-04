@@ -34,16 +34,18 @@ class BraitModel(object):
         de las lecturas de los sensores.
     min_read : int, opcional
         Mínimo número de mediciones para el modo ``SMODE_FULL``.
+    r : float
+        Radio del robot (en m).
     d_min : float, opcional
-        Distancia mínima de detección de obstáculos.
+        Distancia mínima de detección de obstáculos (en m).
     d_max : float, opcional
-        Distancia máxima de detección de obstáculos.
+        Distancia máxima de detección de obstáculos (en m).
     v_min : float, opcional
-        Velocidad lineal mínima del robot.
+        Velocidad lineal mínima del robot (en m/s).
     v_max : float, opcional
-        Velocidad lineal máxima del robot.
+        Velocidad lineal máxima del robot (en m/s).
     w_max : float, opcional
-        Velocidad angular máxima del robot (se asume que es la misma en ambas direcciones).
+        Velocidad angular máxima del robot (se asume que es la misma en ambas direcciones, dada en rad/s).
     alpha : float, opcional
         Rango angular de visión del robot, dado en radianes.
 
@@ -94,12 +96,12 @@ class BraitModel(object):
     >>> v, w = robot.Mixed2b3a()
     """
 
-    def __init__(self, s_mode=0, min_read=40, d_min=0.01, d_max=0.25, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):
+    def __init__(self, s_mode=0, min_read=40, r=0.035, d_min=0.01, d_max=0.25, v_min=-0.3, v_max=0.3, w_max=0.628, alpha = np.pi/6.0):
         
         self.x = 0.
         self.y = 0.
         self.gamma = 0.
-        self.radius = 0.035
+        self.radius = r
 
         self.alpha = alpha
         # Distancia minima y maxima de vision

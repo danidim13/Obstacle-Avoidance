@@ -119,7 +119,7 @@ class DiffModel(object):
             self.model = VFH.VFHModel()
         elif c_type == M_BRAIT:
             print "Using Braitenberg algorithm"
-            self.model = bra.BraitModel(bra.SMODE_FULL, 0.05, 0.3, -self.v_max*0.1, self.v_max, self.omega_max)
+            self.model = bra.BraitModel(s_mode=bra.SMODE_FULL, d_min=0.05, d_max=0.3, v_min=-self.v_max*0.1, v_max=self.v_max, w_max=self.omega_max)
         elif c_type == M_VFHP:
             print "Using VFH+ algorithm"
             self.model = VFHP.VFHPModel()
